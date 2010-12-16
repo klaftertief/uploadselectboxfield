@@ -115,6 +115,13 @@
 		}
 
 		function displayPublishPanel(&$wrapper, $data=NULL, $flagWithError=NULL, $fieldnamePrefix=NULL, $fieldnamePostfix=NULL){
+			
+			$this->_engine->Page->addScriptToHead(URL . '/extensions/uploadselectboxfield/lib/draggable/draggable.publish.js', 101, false);
+			$this->_engine->Page->addScriptToHead(URL . '/extensions/uploadselectboxfield/lib/stage/stage.publish.js', 101, false);
+			$this->_engine->Page->addStylesheetToHead(URL . '/extensions/uploadselectboxfield/lib/stage/stage.publish.css', 'screen', 103, false);
+			$this->_engine->Page->addScriptToHead(URL . '/extensions/uploadselectboxfield/assets/symphony.uploadselectboxfield.js', 102, false);
+			$this->_engine->Page->addStylesheetToHead(URL . '/extensions/uploadselectboxfield/assets/symphony.uploadselectboxfield.css', 'screen', 104, false);
+			
 			if(!is_array($data['file'])) $data['file'] = array($data['file']);
 
 			$options = array();
@@ -132,8 +139,49 @@
 			$label = Widget::Label($this->get('label'));
 			$label->appendChild(Widget::Select($fieldname, $options, ($this->get('allow_multiple_selection') == 'yes' ? array('multiple' => 'multiple') : NULL)));
 
-			if($flagWithError != NULL) $wrapper->appendChild(Widget::wrapFormElementWithError($label, $flagWithError));
-			else $wrapper->appendChild($label);
+			$wrapper->appendChild($label);
+			
+			// selected items
+			$content = array();
+			$items = array();
+			// TODO: creat abstracted method
+			foreach($states['filelist'] as $handle => $v){
+				if (in_array($v, $data['file'])) {
+					$items[] = '<li class="preview" data-value="' . $v . '"><img src="' . URL . '/image/2/40/40/5/media/uploads/' . $v . '" width="40" height="40" /><a href="' . URL . '/workspace/media/uploads/' . $v . '" class="image file">' . $v . '</a></li>';
+				}
+			}
+			$content['html'] = implode('', $items);
+			
+			// Create stage
+			$stage = new XMLElement('div', NULL, array('class' => 'stage preview searchable constructable destructable'));
+			$content['empty'] = '<li class="empty message"><span>' . __('There are no selected items') . '</span></li>';
+			$selected = new XMLElement('ul', $content['empty'] . $content['html'], array('class' => 'selection'));
+			$stage->appendChild($selected);
+			
+			// Append item template
+			$thumb = '<img src="' . URL . '/extensions/uploadselectboxfield/assets/images/new.gif" width="40" height="40" class="thumb" />';
+			$item = new XMLElement('li', $thumb . '<span>' . __('New item') . '<br /><em>' . __('Please fill out the form below.') . '</em></span><a class="destructor">' . __('Remove Item') . '</a>', array('class' => 'item template preview'));
+			$selected->appendChild($item);
+			
+			// Append drawer template
+			$subsection_handle = Administration::instance()->Database->fetchVar('handle', 0,
+				"SELECT `handle`
+				FROM `tbl_sections`
+				WHERE `id` = '" . $this->get('subsection_id') . "'
+				LIMIT 1"
+			);
+			$create_new = URL . '/symphony/publish/' . $subsection_handle;
+			$item = new XMLElement('li', '<iframe name="subsection-' . $this->get('element_name') . '" src="about:blank" target="' . $create_new . '"  frameborder="0"></iframe>', array('class' => 'drawer template'));
+			$selected->appendChild($item);
+
+			// Error handling
+			if($flagWithError != NULL) {
+				$wrapper->appendChild(Widget::wrapFormElementWithError($stage, $flagWithError));
+			}
+			else {
+				$wrapper->appendChild($stage);
+			}
+			
 		}
 
 		function prepareTableValue($data, XMLElement $link=NULL){
