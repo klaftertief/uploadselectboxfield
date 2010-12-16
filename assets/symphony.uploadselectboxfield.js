@@ -1,29 +1,19 @@
-/*
- * SUBSECTION MANAGER
- * for Symphony
- *
- * @author: Nils Hörrmann, post@nilshoerrmann.de
- * @source: http://github.com/nilshoerrmann/subsection
- */
 
+(function($) {
 
-/*-----------------------------------------------------------------------------
-	Language strings
------------------------------------------------------------------------------*/	 
-
+	// Language strings
 	Symphony.Language.add({
 		'There are no selected items': false,
 		'Are you sure you want to delete this item? It will be remove from all entries. This step cannot be undone.': false
 	}); 
 	
-
-/*-----------------------------------------------------------------------------
-	Subsection plugin
------------------------------------------------------------------------------*/
-
-	jQuery.fn.symphonySubsectionmanager = function(custom_settings) {
-
-		// Get objects
+	/**
+	 * This plugin add an interface for subsection management.
+	 *
+	 * @author: Nils Hörrmann, post@nilshoerrmann.de
+	 * @source: http://github.com/nilshoerrmann/subsectionmanager
+	 */
+	$.fn.symphonySubsectionmanager = function(custom_settings) {
 		var objects = this;
 		
 		// Get settings
@@ -38,29 +28,23 @@
 			formatter: {
 				markdown: {
 					image: '![{@text}]({@path})',
-					file: '[{@text}]({@path})',
-					custom: '{@custom}'
+					file: '[{@text}]({@path})'
 				},
 				textile: {
 					image: '!{@path}({@text})!',
-					file: '"{@text}":({@path})',
-					custom: '{@custom}'
+					file: '"{@text}":({@path})'
 				},
 				html: {
 					image: '<img src="{@path}" alt="{@text}" />',
-					file: '<a href="{@path}">{@text}</a>',
-					custom: '{@custom}'
+					file: '<a href="{@path}">{@text}</a>'
 				}
 			},
 			delay_initialize:	false
 		};
-		jQuery.extend(settings, custom_settings);
-
-
-	/*-------------------------------------------------------------------------
-		Subsection
-	-------------------------------------------------------------------------*/
-
+		$.extend(settings, custom_settings);
+		
+	/*-----------------------------------------------------------------------*/
+	
 		objects = objects.map(function() {
 		
 			// Get elements
@@ -76,7 +60,7 @@
 				var source = iframe.attr('target') + '/{$action}/{$id}' ;
 				var id = item.attr('value');
 				
-				if(!item.next('li').hasClass('drawer')) {
+				if(!item.next('li:not(.template)').hasClass('drawer')) {
 						
 					// Setup source
 					if(create) {
@@ -89,7 +73,7 @@
 					iframe.attr('src', source);
 					
 					// Close other drawers
-					jQuery('body').click();
+					$('body').click();
 
 					// Insert drawer
 					item.addClass('active');
@@ -98,22 +82,22 @@
 					// Handle iframe
 					iframe.load(function(event) {
 						
-						var $this = jQuery(this);
+						var contents = iframe.contents();
 						
 						// Remove unneeded elements
-						$this.contents().find('body').addClass('subsection');
-						$this.contents().find('h1').remove();
-						$this.contents().find('h2').remove();
-						$this.contents().find('#nav').remove();
-						$this.contents().find('#usr').remove();
-						$this.contents().find('#notice:not(.error):not(.success)').remove();
-						$this.contents().find('#notice a').remove();
+						contents.find('body').addClass('subsection');
+						contents.find('h1').remove();
+						contents.find('h2').remove();
+						contents.find('#nav').remove();
+						contents.find('#usr').remove();
+						contents.find('#notice:not(.error):not(.success)').remove();
+						contents.find('#notice a').remove();
 						
 						// Focus first input field
-						$this.contents().find('input:first').focus();
+						contents.find('input:first').focus();
 						
 						// Set frame and drawer height
-						var height = $this.contents().find('form').outerHeight();
+						var height = contents.find('form').outerHeight();
 						iframe.height(height).animate({
 							opacity: 1
 						}, 'fast');
@@ -122,39 +106,38 @@
 						}, settings.speed);
 						
 						// Fetch saving
-						iframe.contents().find('div.actions input').click(function() {
+						contents.find('div.actions input').click(function() {
 							iframe.animate({
 								opacity: 0.01
 							}, 'fast');
-						});
+						})
 						
 						// Update item 
-						if(iframe.contents().find('#notice.success').size() > 0) {
+						if(contents.find('#notice.success').size() > 0) {
 							update(item.attr('value'), item, iframe, create);
 						}
 											
 						// Delete item
-						var remove = iframe.contents().find('button.confirm');
+						var remove = contents.find('button.confirm');
 						remove.die('click').unbind();
 						remove.click(function(event) {
 							erase(event, id);
 						});
 						
 						// Focus first input
-						iframe.contents().find('fieldset input:first').focus();
+						contents.find('fieldset input:first').focus();
 						
 					});
 				
 					// Automatically hide drawer later
 					if(!create) {
-						jQuery('body').bind('click', function(event) {
-
-							if(jQuery(event.target).parents().filter('li.active, li.drawer, li.new').size() == 0) {
+						$('body').bind('click', function(event) {
+							if($(event.target).parents().filter('li.active, li.drawer, li.new, ul.selection').size() == 0) {						
 								object.find('div.stage li.active').removeClass('active');
 								object.find('div.stage li.drawer:not(.create):not(.template)').slideUp('normal', function(element) {
-									jQuery(this).remove();
+									$(this).remove();
 								});
-								jQuery('body').unbind('click');
+								$('body').unbind('click');
 							}
 						});
 					}
@@ -175,10 +158,13 @@
 				var section = meta.val();
 				
 				// Get id of newly created items
-				if(create) id = iframe.contents().find('form').attr('action').match(/\d+/g)[0];
+				if(create) id = iframe.contents().find('form').attr('action').match(/\d+/g);
+				if($.isArray(id)) {
+					id = id[id.length - 1];
+				}
 
 				// Load item data
-				jQuery.ajax({
+				$.ajax({
 					type: 'GET',
 					url: Symphony.WEBSITE + '/symphony/extension/subsectionmanager/get/',
 					data: { 
@@ -187,13 +173,13 @@
 						entry: id
 					},
 					dataType: 'html',
-					success: function(result, a, b, c) {
+					success: function(result) {
 					
-						result = jQuery(result);
+						result = $(result);
 					
 						// Find destructor
 						var destructor = item.find('.destructor').clone().click(function(event) {
-							var item = jQuery(event.target).parent('li');
+							var item = $(event.target).parent('li');
 							object.find('div.stage').trigger('destruct', [item]);
 						});
 
@@ -219,8 +205,8 @@
 							
 							// Close editor
 							object.find('li.create').slideUp(settings.speed, function() {
-								jQuery(this).remove();
-							});
+								$(this).remove();
+							})
 							
 							object.trigger('createstop');
 							
@@ -241,7 +227,7 @@
 				
 				if(confirm(Symphony.Language.get('Are you sure you want to delete this item? It will be remove from all entries. This step cannot be undone.'))) {
 					object.find('li[value=' + id + '], li.drawer:not(.template)').slideUp(settings.speed, function() {
-						jQuery(this).remove();
+						$(this).remove();
 
 						// Add empty selection message
 						var selection = object.find('ul.selection').find(settings.items);
@@ -280,7 +266,7 @@
 					// Enable destructor
 					item.find('.destructor').click(function(event) {
 						item.next('li').andSelf().slideUp(settings.speed, function() {
-							jQuery(this).remove();
+							$(this).remove();
 						});
 						// Add empty selection message
 						var selection = object.find('ul.selection').find(settings.items);
@@ -301,13 +287,16 @@
 
 			var drop = function(event, helper) {
 			
-				var target = jQuery(event.target);
-				var item = jQuery(helper);
+				var target = $(event.target);
+				var item = $(helper);
 				var text;
 
 				// Remove dropper
-				jQuery('.dropper').mouseout();
+				$('.dropper').mouseout();
 				
+				// Remove destructor
+				item.find('a.destructor').remove();
+		
 				// Formatter
 				formatter = target.attr('class').match(/(?:markdown)|(?:textile)/) || ['html'];
 				
@@ -317,14 +306,12 @@
 					var file = item.find('a.file');
 					var matches = {
 						text: file.text(),
-						path: file.attr('href'),
-						custom: jQuery('.custom_drop_text',file).html()
-					};
+						path: file.attr('href')
+					}
 
 					// Get type
 					var type = 'file';
 					if(file.hasClass('image')) type = 'image';
-					if(jQuery('.custom_drop_text',file).length) type = 'custom';
 					
 					// Prepare text
 					text = object.subsection.substitute(settings.formatter[formatter.join()][type], matches);
@@ -344,12 +331,12 @@
 				target[0].selectionStart = start + text.length;
 				target[0].selectionEnd = start + text.length;
 
-			};
+			}
 
 		/*-------------------------------------------------------------------*/
 			
-			if (object instanceof jQuery === false) {
-				object = jQuery(object);
+			if (object instanceof $ === false) {
+				object = $(object);
 			}
 			
 			object.subsection = {
@@ -362,9 +349,9 @@
 					
 					// Set sortorder
 					object.subsection.setSortOrder();
-					
+				
 					// Initialize stage for subsections
-					jQuery(document).ready(function() {
+					$(document).ready(function() {
 						var stage = object.find('div.stage');
 						stage.symphonyStage({
 							source: object.find('select'),
@@ -378,16 +365,10 @@
 									edit(item);
 								}
 							},
-							queue_ajax: {
-								url: Symphony.WEBSITE + '/symphony/extension/uploadselectboxfield/get/',
-								data: { 
-									// id: id, 
-									// section: section 
-									id: 19, 
-									section: 3 
-								}
-							},
 							queue: {
+								constructor: '<div class="queue"/>',
+								handle: 'div.queue input',
+								speed: 'normal',
 								ajax: {
 									url: Symphony.WEBSITE + '/symphony/extension/uploadselectboxfield/get/',
 									data: { 
@@ -397,25 +378,25 @@
 										section: 3 
 									}
 								}
-							}	
+							}
 						});
 					});
 
 					// Attach events
-					object.find('.create').click(create);
+					object.find('.create').live('click', create);
 					object.find('div.stage').bind('dragstop', object.subsection.getSortOrder);
 					object.find('div.stage').bind('constructstop', object.subsection.getSortOrder);
 					object.bind('createstop', object.subsection.getSortOrder);
 					object.find('div.stage').bind('dragstart', object.subsection.close);
 					object.find('.destructor').bind('click', function(event) {
-						jQuery('ul.selection li.drawer:not(.template)').slideUp(settings.speed, function() {
-							jQuery(this).remove();
+						$('ul.selection li.drawer:not(.template)').slideUp(settings.speed, function() {
+							$(this).remove();
 						});
-					});
+					})
 					
 					// Handle drop events
 					if(settings.draggable) {
-						jQuery(settings.dragtarget).unbind('drop').bind('drop', function(event, item) {
+						$(settings.dragtarget).unbind('drop').bind('drop', function(event, item) {
 							drop(event, item);
 						});
 					}
@@ -434,7 +415,7 @@
 						
 						// Close all drawers
 						object.find('li.drawer:not(.template)').slideUp(settings.speed, function() {
-							jQuery(this).remove();
+							$(this).remove();
 						});
 						
 					}
@@ -446,7 +427,7 @@
 					// Get new item order
 					var sorting = '';
 					object.find('div.stage ul.selection').find(settings.items).each(function(index, item) {
-						value = jQuery(item).attr('value');
+						value = $(item).attr('value');
 						if(value != undefined && value != -1) {
 							if(index != 0) sorting += ',';
 							sorting += value;
@@ -464,7 +445,7 @@
 					// var selection = object.find('ul.selection');
 					// 
 					// // Sort
-					// jQuery.each(sorting, function(index, value) {
+					// $.each(sorting, function(index, value) {
 					// 	items.filter('[value=' + value + ']').prependTo(selection);
 					// });
 					
@@ -478,7 +459,7 @@
 					return template;
 				}
 							
-			};
+			}
 			
 			if (settings.delay_initialize !== true) {
 				object.subsection.initialize();
@@ -489,13 +470,11 @@
 		
 		return objects;
 
-	};
+	}
 	
-
-/*-----------------------------------------------------------------------------
-	Apply Subsection plugin
------------------------------------------------------------------------------*/
-
-	jQuery(document).ready(function() {
-		jQuery('div.field-uploadselectbox').symphonySubsectionmanager();
+	// Apply Subsection plugin
+	$(document).ready(function() {
+		$('div.field-uploadselectbox').symphonySubsectionmanager();
 	});
+	
+})(jQuery.noConflict());
