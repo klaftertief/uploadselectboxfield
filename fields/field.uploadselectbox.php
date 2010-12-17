@@ -139,15 +139,20 @@
 			$label = Widget::Label($this->get('label'));
 			$label->appendChild(Widget::Select($fieldname, $options, ($this->get('allow_multiple_selection') == 'yes' ? array('multiple' => 'multiple') : NULL)));
 
+			// Setup destination
+			$input = Widget::Input('fields[destination]', $this->get('destination'), 'hidden');
+			$label->appendChild($input);
+			
 			$wrapper->appendChild($label);
 			
 			// selected items
 			$content = array();
 			$items = array();
+			$path = str_replace('/workspace', '', $this->get('destination'));
 			// TODO: creat abstracted method
 			foreach($states['filelist'] as $handle => $v){
 				if (in_array($v, $data['file'])) {
-					$items[] = '<li class="preview" data-value="' . $v . '"><img src="' . URL . '/image/2/40/40/5/media/uploads/' . $v . '" width="40" height="40" /><a href="' . URL . '/workspace/media/uploads/' . $v . '" class="image file">' . $v . '</a></li>';
+					$items[] = '<li class="preview" data-value="' . $v . '"><img src="' . URL . '/image/2/40/40/5' . $path . '/' . $v . '" width="40" height="40" /><a href="' . URL . $this->get('destination') . '/' . $v . '" class="image file">' . $v . '</a></li>';
 				}
 			}
 			$content['html'] = implode('', $items);
@@ -291,7 +296,12 @@
 
 			$status = self::__OK__;
 
-			if(!is_array($data)) return array('file' => General::sanitize($data));
+			if(!is_array($data)) {
+				return array(
+					'file' => General::sanitize($data),
+					'meta' => serialize(self::getMetaInfo(WORKSPACE . str_replace('/workspace', '', $this->get('destination')) . '/' . $data, 'image/jpg'))
+				);
+			}
 
 			if(empty($data)) return NULL;
 
@@ -300,8 +310,31 @@
 			foreach($data as $file) {
 				$result['file'][] = $file;
 			}
-
+			
 			return $result;
+		}
+
+		public static function getMetaInfo($file, $type){
+
+			$imageMimeTypes = array(
+				'image/gif',
+				'image/jpg',
+				'image/jpeg',
+				'image/pjpeg',
+				'image/png',
+			);
+			
+			$meta = array();
+			
+			$meta['creation'] = DateTimeObj::get('c', filemtime($file));
+			
+			if(General::in_iarray($type, $imageMimeTypes) && $array = @getimagesize($file)){
+				$meta['width']    = $array[0];
+				$meta['height']   = $array[1];
+			}
+			
+			return $meta;
+			
 		}
 
 		function createTable(){
@@ -312,9 +345,14 @@
 				  `id` int(11) unsigned NOT NULL auto_increment,
 				  `entry_id` int(11) unsigned NOT NULL,
 				  `file` varchar(255) default NULL,
+				  `size` int(11) unsigned NULL,
+				  `mimetype` varchar(50) default NULL,
+				  `meta` varchar(255) default NULL,
 				  PRIMARY KEY  (`id`),
-				  KEY `entry_id` (`entry_id`)
-				);"
+				  KEY `entry_id` (`entry_id`),
+				  KEY `file` (`file`),
+				  KEY `mimetype` (`mimetype`)
+				) TYPE=MyISAM ;	"
 
 			);
 		}

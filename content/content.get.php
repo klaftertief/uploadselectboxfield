@@ -12,14 +12,15 @@
 		}
 
 		public function __viewIndex() {
-			// TODO dynamic path
+			// TODO $_GET security?
 			$items = array();
-			$states = General::listStructure(DOCROOT . '/workspace/media/uploads', null, false, 'asc', DOCROOT);
+			$states = General::listStructure(DOCROOT . $_GET['destination'], null, false, 'asc', DOCROOT);
+			$path = str_replace('/workspace', '', $_GET['destination']);
 			
 			if (is_null($states['filelist']) || empty($states['filelist'])) $states['filelist'] = array();
 			
 			foreach($states['filelist'] as $handle => $v){
-				$items[] = '<li class="preview" data-value="' . $v . '"><img src="' . URL . '/image/2/40/40/5/media/uploads/' . $v . '" width="40" height="40" /><a href="' . URL . '/workspace/media/uploads/' . $v . '" class="image file">' . $v . '</a></li>';
+				$items[] = '<li class="preview" data-value="' . $v . '"><img src="' . URL . '/image/2/40/40/5' . $path . '/' . $v . '" width="40" height="40" /><a href="' . URL . $_GET['destination'] . '/' . $v . '" class="image file">' . $v . '</a></li>';
 			}
 						
 			sort($items);
