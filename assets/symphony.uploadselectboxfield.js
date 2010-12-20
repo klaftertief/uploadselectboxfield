@@ -19,9 +19,10 @@
 		// Initialize Subsection Manager
 		$('div.field-uploadselectbox').each(function() {
 			var manager = $(this),
+				select = manager.find('select'),
 				stage = manager.find('div.stage'),
 				selection = stage.find('ul.selection'),
-				queue = stage.find('div.queue'),
+				queue = stage.find('div.queue ul'),
 				drawer = stage.data('templates.stage').templates.filter('.drawer').removeClass('template');
 
 		/*-----------------------------------------------------------------------*/
@@ -31,8 +32,10 @@
 				browse();
 			});
 
-			queue.bind('click', function(event) {
+			// Selecting
+			queue.delegate('li', 'click', function(event) {
 				event.preventDefault();
+				select.find('option[value='+$(this).attr('data-value')+']').attr('selected', 'selected');
 			});
 
 		/*-----------------------------------------------------------------------*/
