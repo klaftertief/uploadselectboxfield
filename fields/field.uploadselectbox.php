@@ -155,7 +155,7 @@
 			// TODO: create abstracted method
 			foreach($states['filelist'] as $handle => $v){
 				if (in_array($rel_path . '/' . $v, $data['file'])) {
-					$items[] = '<li class="preview" data-value="' . $v . '"><img src="' . URL . '/image/2/40/40/5' . $rel_path . '/' . $v . '" width="40" height="40" /><a href="' . URL . $destination . '/' . $v . '" class="image file">' . $v . '</a></li>';
+					$items[] = '<li class="preview" data-value="' . $rel_path . '/' . $v . '"><img src="' . URL . '/image/2/40/40/5' . $rel_path . '/' . $v . '" width="40" height="40" /><a href="' . URL . $destination . '/' . $v . '" class="image file">' . $v . '</a></li>';
 				}
 			}
 			$content['html'] = implode('', $items);
