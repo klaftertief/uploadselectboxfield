@@ -4,12 +4,17 @@
 
 	if(!defined('__IN_SYMPHONY__')) die('<h2>Symphony Error</h2><p>You cannot directly access this file</p>');
 
+	require_once(EXTENSIONS . '/uploadselectboxfield/lib/stage/class.stage.php');
+
 	Class FieldUploadselectbox extends Field {
 
 		function __construct(&$parent){
 			parent::__construct($parent);
 			$this->_name = 'Upload Select Box';
+			$this->_required = true;
+
 			$this->set('show_column', 'no');
+			$this->set('required', 'yes');
 		}
 
 		function canToggle(){
@@ -37,35 +42,29 @@
 			return false;
 		}
 
-		public function appendFormattedElement(&$wrapper, $data, $encode = false) {
+		public function appendFormattedElement(&$wrapper, $data) {
 
-			if (!is_array($data) or empty($data)) return;
-
-			if (!is_array($data['file']) && !is_null($data['file'])) {
-				$data = array(
-					'file' => array($data['file'])
-				);
-			}
-			else {
+			// It is possible an array of NULL data will be passed in. Check for this.
+			if(!is_array($data) || !isset($data['file']) || is_null($data['file'])){
 				return;
 			}
-
+			
 			$item = new XMLElement($this->get('element_name'));
-
-			$path = DOCROOT . $this->get('destination');
-
+			$file = WORKSPACE . $data['file'];
 			$item->setAttributeArray(array(
-			 	'path' => str_replace(WORKSPACE,'', $path)
+				'size' => (file_exists($file) && is_readable($file) ? General::formatFilesize(filesize($file)) : 'unknown'),
+			 	'path' => str_replace(WORKSPACE, NULL, dirname(WORKSPACE . $data['file'])),
+				'type' => $data['mimetype'],
 			));
-
-			foreach($data['file'] as $index => $file) {
-				$item->appendChild(new XMLElement(
-					'item', General::sanitize($file), array(
-						'size' => General::formatFilesize(filesize($path . '/' . $file)),
-					)
-				));
+			
+			$item->appendChild(new XMLElement('filename', General::sanitize(basename($data['file']))));
+						
+			$m = unserialize($data['meta']);
+			
+			if(is_array($m) && !empty($m)){
+				$item->appendChild(new XMLElement('meta', NULL, $m));
 			}
-
+					
 			$wrapper->appendChild($item);
 		}
 
@@ -102,15 +101,27 @@
 			else $wrapper->appendChild($label);
 
 			$this->appendRequiredCheckbox($wrapper);
-
-			## Allow selection of multiple items
-			$label = Widget::Label();
-			$input = Widget::Input('fields['.$this->get('sortorder').'][allow_multiple_selection]', 'yes', 'checkbox');
-			if($this->get('allow_multiple_selection') == 'yes') $input->setAttribute('checked', 'checked');
-			$label->setValue(__('%s Allow selection of multiple options', array($input->generate())));
-			$wrapper->appendChild($label);
-
 			$this->appendShowColumnCheckbox($wrapper);
+
+			// Behaviour
+			$fieldset = Stage::displaySettings(
+				$this->get('id'), 
+				$this->get('sortorder'), 
+				__('Behaviour')
+			);
+
+			// Handle missing settings
+			if(!$this->get('id') && $errors == NULL) {
+				$this->set('allow_multiple', 1);
+				$this->set('show_preview', 1);
+			}
+			
+			// Setting: allow multiple
+			$setting = new XMLElement('label', '<input name="fields[' . $this->get('sortorder') . '][allow_multiple]" value="1" type="checkbox"' . ($this->get('allow_multiple') == 0 ? '' : ' checked="checked"') . '/> ' . __('Allow selection of multiple items') . ' <i>' . __('This will switch between single and multiple item lists') . '</i>');
+			$fieldset->appendChild($setting);
+			
+			// Append behaviour settings
+			$wrapper->appendChild($fieldset);
 
 		}
 
@@ -161,7 +172,7 @@
 			$content['html'] = implode('', $items);
 			
 			// Create stage
-			$stage = new XMLElement('div', NULL, array('class' => 'stage preview searchable constructable destructable'));
+			$stage = new XMLElement('div', NULL, array('class' => 'stage preview searchable single constructable'));
 			$content['empty'] = '<li class="empty message"><span>' . __('There are no selected items') . '</span></li>';
 			$selected = new XMLElement('ul', $content['empty'] . $content['html'], array('class' => 'selection'));
 			$stage->appendChild($selected);
