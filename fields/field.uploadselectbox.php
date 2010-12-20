@@ -123,14 +123,18 @@
 			$this->_engine->Page->addStylesheetToHead(URL . '/extensions/uploadselectboxfield/assets/symphony.uploadselectboxfield.css', 'screen', 104, false);
 			
 			if(!is_array($data['file'])) $data['file'] = array($data['file']);
-
+			
+			$destination = $this->get('destination');
+			$abs_path = DOCROOT . '/' . trim($destination, '/');
+			$rel_path = str_replace('/workspace', '', $destination);
 			$options = array();
-			$states = General::listStructure(DOCROOT . $this->get('destination'), null, false, 'asc', DOCROOT);
+			
+			$states = General::listStructure(DOCROOT . $destination, null, false, 'asc', DOCROOT);
 			
 			if (is_null($states['filelist']) || empty($states['filelist'])) $states['filelist'] = array();
 			
 			foreach($states['filelist'] as $handle => $v){
-				$options[] = array(General::sanitize($v), in_array($v, $data['file']), $v);
+				$options[] = array($rel_path . '/' . General::sanitize($v), in_array($rel_path . '/' . $v, $data['file']), $v);
 			}
 
 			$fieldname = 'fields'.$fieldnamePrefix.'['.$this->get('element_name').']'.$fieldnamePostfix;
@@ -148,11 +152,10 @@
 			// selected items
 			$content = array();
 			$items = array();
-			$path = str_replace('/workspace', '', $this->get('destination'));
-			// TODO: creat abstracted method
+			// TODO: create abstracted method
 			foreach($states['filelist'] as $handle => $v){
-				if (in_array($v, $data['file'])) {
-					$items[] = '<li class="preview" data-value="' . $v . '"><img src="' . URL . '/image/2/40/40/5' . $path . '/' . $v . '" width="40" height="40" /><a href="' . URL . $this->get('destination') . '/' . $v . '" class="image file">' . $v . '</a></li>';
+				if (in_array($rel_path . '/' . $v, $data['file'])) {
+					$items[] = '<li class="preview" data-value="' . $v . '"><img src="' . URL . '/image/2/40/40/5' . $rel_path . '/' . $v . '" width="40" height="40" /><a href="' . URL . $destination . '/' . $v . '" class="image file">' . $v . '</a></li>';
 				}
 			}
 			$content['html'] = implode('', $items);
@@ -295,20 +298,32 @@
 		public function processRawFieldData($data, &$status, $simulate=false, $entry_id=NULL){
 
 			$status = self::__OK__;
-
+			
 			if(!is_array($data)) {
+				$mimetype = $this->getMimetype(WORKSPACE . '/' . $data);
 				return array(
 					'file' => General::sanitize($data),
-					'meta' => serialize(self::getMetaInfo(WORKSPACE . str_replace('/workspace', '', $this->get('destination')) . '/' . $data, 'image/jpg'))
+					'meta' => serialize(self::getMetaInfo(WORKSPACE . '/' . $data, $mimetype)),
+					'mimetype' => $mimetype,
+					'size' => (file_exists(WORKSPACE . '/' . $data) && is_readable(WORKSPACE . '/' . $data) ? filesize(WORKSPACE . '/' . $data) : 'unknown')
 				);
 			}
 
 			if(empty($data)) return NULL;
 
-			$result = array('file' => array());
+			$result = array(
+				'file' => array(),
+				'meta' => array(),
+				'mimetype' => array(),
+				'size' => array()
+			);
 
 			foreach($data as $file) {
-				$result['file'][] = $file;
+				$mimetype = $this->getMimetype(WORKSPACE . '/' . $file);
+				$result['file'][] = General::sanitize($file);
+				$result['meta'][] = serialize(self::getMetaInfo(WORKSPACE . '/' . $file, 'image/jpg'));
+				$result['mimetype'][] = $mimetype;
+				$result['size'][] = (file_exists(WORKSPACE . '/' . $file) && is_readable(WORKSPACE . '/' . $file) ? filesize(WORKSPACE . '/' . $file) : 'unknown');
 			}
 			
 			return $result;
@@ -335,6 +350,88 @@
 			
 			return $meta;
 			
+		}
+
+		public static function getFileExtension($file){
+			$parts = explode('.', basename($file));
+			return array_pop($parts);
+		}
+
+		function getMimetype($file) {
+			
+			if (!(function_exists('finfo_open') && is_readable($file) && $finfo = new finfo(FILEINFO_MIME))) {
+				$ct['htm'] = 'text/html';
+				$ct['html'] = 'text/html';
+				$ct['txt'] = 'text/plain';
+				$ct['asc'] = 'text/plain';
+				$ct['bmp'] = 'image/bmp';
+				$ct['gif'] = 'image/gif';
+				$ct['jpeg'] = 'image/jpeg';
+				$ct['jpg'] = 'image/jpeg';
+				$ct['jpe'] = 'image/jpeg';
+				$ct['png'] = 'image/png';
+				$ct['ico'] = 'image/vnd.microsoft.icon';
+				$ct['mpeg'] = 'video/mpeg';
+				$ct['mpg'] = 'video/mpeg';
+				$ct['mpe'] = 'video/mpeg';
+				$ct['qt'] = 'video/quicktime';
+				$ct['mov'] = 'video/quicktime';
+				$ct['avi']  = 'video/x-msvideo';
+				$ct['wmv'] = 'video/x-ms-wmv';
+				$ct['mp2'] = 'audio/mpeg';
+				$ct['mp3'] = 'audio/mpeg';
+				$ct['rm'] = 'audio/x-pn-realaudio';
+				$ct['ram'] = 'audio/x-pn-realaudio';
+				$ct['rpm'] = 'audio/x-pn-realaudio-plugin';
+				$ct['ra'] = 'audio/x-realaudio';
+				$ct['wav'] = 'audio/x-wav';
+				$ct['css'] = 'text/css';
+				$ct['zip'] = 'application/zip';
+				$ct['pdf'] = 'application/pdf';
+				$ct['doc'] = 'application/msword';
+				$ct['bin'] = 'application/octet-stream';
+				$ct['exe'] = 'application/octet-stream';
+				$ct['class']= 'application/octet-stream';
+				$ct['dll'] = 'application/octet-stream';
+				$ct['xls'] = 'application/vnd.ms-excel';
+				$ct['ppt'] = 'application/vnd.ms-powerpoint';
+				$ct['wbxml']= 'application/vnd.wap.wbxml';
+				$ct['wmlc'] = 'application/vnd.wap.wmlc';
+				$ct['wmlsc']= 'application/vnd.wap.wmlscriptc';
+				$ct['dvi'] = 'application/x-dvi';
+				$ct['spl'] = 'application/x-futuresplash';
+				$ct['gtar'] = 'application/x-gtar';
+				$ct['gzip'] = 'application/x-gzip';
+				$ct['js'] = 'application/x-javascript';
+				$ct['swf'] = 'application/x-shockwave-flash';
+				$ct['tar'] = 'application/x-tar';
+				$ct['xhtml']= 'application/xhtml+xml';
+				$ct['au'] = 'audio/basic';
+				$ct['snd'] = 'audio/basic';
+				$ct['midi'] = 'audio/midi';
+				$ct['mid'] = 'audio/midi';
+				$ct['m3u'] = 'audio/x-mpegurl';
+				$ct['tiff'] = 'image/tiff';
+				$ct['tif'] = 'image/tiff';
+				$ct['rtf'] = 'text/rtf';
+				$ct['wml'] = 'text/vnd.wap.wml';
+				$ct['wmls'] = 'text/vnd.wap.wmlscript';
+				$ct['xsl'] = 'text/xml';
+				$ct['xml'] = 'text/xml';
+
+				$extension = $this->getFileExtension($value);
+				if (!$type = $ct[strtolower($extension)]) {
+					$type = 'unknown';
+				}
+			} else {
+				$type = $finfo->file($file);
+				// remove charset (added as of PHP 5.3)
+				if (false !== $pos = strpos($type, ';')) {
+					$type = substr($type, 0, $pos);
+				}
+			}
+			
+			return $type;
 		}
 
 		function createTable(){
