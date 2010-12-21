@@ -271,7 +271,7 @@
 					$custom_link[] = $link->generate();
 				}
 				else{
-					$link = Widget::Anchor(basename($file), URL . $this->get('destination') . '/'. $file);
+					$link = Widget::Anchor(basename($file), URL . '/workspace'. $file);
 					$custom_link[] = $link->generate();
 				}
 			}
