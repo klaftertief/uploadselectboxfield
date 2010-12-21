@@ -49,23 +49,71 @@
 				return;
 			}
 			
-			$item = new XMLElement($this->get('element_name'));
-			$file = WORKSPACE . $data['file'];
-			$item->setAttributeArray(array(
-				'size' => (file_exists($file) && is_readable($file) ? General::formatFilesize(filesize($file)) : 'unknown'),
-			 	'path' => str_replace(WORKSPACE, NULL, dirname(WORKSPACE . $data['file'])),
-				'type' => $data['mimetype'],
-			));
+			$element = new XMLElement($this->get('element_name'));
 			
-			$item->appendChild(new XMLElement('filename', General::sanitize(basename($data['file']))));
-						
-			$m = unserialize($data['meta']);
-			
-			if(is_array($m) && !empty($m)){
-				$item->appendChild(new XMLElement('meta', NULL, $m));
+			// single selection mode
+			if ($this->get('allow_multiple_selection') == 'no') {
+				$file = WORKSPACE . $data['file'];
+				$element->setAttributeArray(array(
+					'size' => (file_exists($file) && is_readable($file) ? General::formatFilesize(filesize($file)) : 'unknown'),
+				 	'path' => str_replace(WORKSPACE, NULL, dirname(WORKSPACE . $data['file'])),
+					'type' => $data['mimetype'],
+				));
+
+				$element->appendChild(new XMLElement('filename', General::sanitize(basename($data['file']))));
+
+				$m = unserialize($data['meta']);
+
+				if(is_array($m) && !empty($m)){
+					$element->appendChild(new XMLElement('meta', NULL, $m));
+				}
 			}
+			// multiple selection mode
+			else {
+				// only one file
+				if (!is_array($data['file'])) {
+					$item = new XMLElement('item');
 					
-			$wrapper->appendChild($item);
+					$file = WORKSPACE . $data['file'];
+					$item->setAttributeArray(array(
+						'size' => (file_exists($file) && is_readable($file) ? General::formatFilesize(filesize($file)) : 'unknown'),
+					 	'path' => str_replace(WORKSPACE, NULL, dirname(WORKSPACE . $data['file'])),
+						'type' => $data['mimetype'],
+					));
+
+					$item->appendChild(new XMLElement('filename', General::sanitize(basename($data['file']))));
+
+					$m = unserialize($data['meta']);
+
+					if(is_array($m) && !empty($m)){
+						$item->appendChild(new XMLElement('meta', NULL, $m));
+					}
+					$element->appendChild($item);
+				}
+				// multiple files
+				else {
+					foreach ($data['file'] as $index => $value) {
+						$file = WORKSPACE . $data['file'][$index];
+						$item = new XMLElement('item');
+						$item->setAttributeArray(array(
+							'size' => (file_exists($file) && is_readable($file) ? General::formatFilesize(filesize($file)) : 'unknown'),
+						 	'path' => str_replace(WORKSPACE, NULL, dirname(WORKSPACE . $data['file'][$index])),
+							'type' => $data['mimetype'][$index],
+						));
+						$item->appendChild(new XMLElement('filename', General::sanitize(basename($data['file'][$index]))));
+
+						$m = unserialize($data['meta'][$index]);
+
+						if(is_array($m) && !empty($m)){
+							$item->appendChild(new XMLElement('meta', NULL, $m));
+						}
+
+						$element->appendChild($item);
+					}
+				}
+			}
+			
+			$wrapper->appendChild($element);
 		}
 
 		function displaySettingsPanel(&$wrapper, $errors=NULL){
@@ -112,12 +160,11 @@
 
 			// Handle missing settings
 			if(!$this->get('id') && $errors == NULL) {
-				$this->set('allow_multiple', 1);
-				$this->set('show_preview', 1);
+				$this->set('allow_multiple_selection', 1);
 			}
 			
 			// Setting: allow multiple
-			$setting = new XMLElement('label', '<input name="fields[' . $this->get('sortorder') . '][allow_multiple]" value="1" type="checkbox"' . ($this->get('allow_multiple') == 0 ? '' : ' checked="checked"') . '/> ' . __('Allow selection of multiple items') . ' <i>' . __('This will switch between single and multiple item lists') . '</i>');
+			$setting = new XMLElement('label', '<input name="fields[' . $this->get('sortorder') . '][allow_multiple_selection]" value="1" type="checkbox"' . ($this->get('allow_multiple_selection') == 'no' ? '' : ' checked="checked"') . '/> ' . __('Allow selection of multiple items') . ' <i>' . __('This will switch between single and multiple item lists') . '</i>');
 			$fieldset->appendChild($setting);
 			
 			// Append behaviour settings
@@ -171,8 +218,11 @@
 			}
 			$content['html'] = implode('', $items);
 			
+			// Get stage settings
+			$settings = ' ' . implode(' ', Stage::getComponents($this->get('id')));
+			
 			// Create stage
-			$stage = new XMLElement('div', NULL, array('class' => 'stage preview searchable single constructable'));
+			$stage = new XMLElement('div', NULL, array('class' => 'stage preview' . $settings . ($this->get('allow_multiple_selection') == 'yes' ? ' multiple' : ' single')));
 			$content['empty'] = '<li class="empty message"><span>' . __('There are no selected items') . '</span></li>';
 			$selected = new XMLElement('ul', $content['empty'] . $content['html'], array('class' => 'selection'));
 			$stage->appendChild($selected);
@@ -301,8 +351,14 @@
 			$fields['destination'] = $this->get('destination');
 			$fields['allow_multiple_selection'] = ($this->get('allow_multiple_selection') ? $this->get('allow_multiple_selection') : 'no');
 
-			$this->_engine->Database->query("DELETE FROM `tbl_fields_".$this->handle()."` WHERE `field_id` = '$id' LIMIT 1");
-			return $this->_engine->Database->insert($fields, 'tbl_fields_' . $this->handle());
+			// Save new stage settings for this field
+			Stage::saveSettings($this->get('id'), $this->get('stage'), 'uploadselectboxfield');
+
+			// Delete old field settings
+			Administration::instance()->Database->query("DELETE FROM `tbl_fields_".$this->handle()."` WHERE `field_id` = '$id' LIMIT 1");
+			
+			// Save new settings
+			return Administration::instance()->Database->insert($fields, 'tbl_fields_' . $this->handle());
 
 		}
 
