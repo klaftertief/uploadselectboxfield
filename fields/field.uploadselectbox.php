@@ -187,6 +187,10 @@
 			$rel_path = str_replace('/workspace', '', $destination);
 			$options = array();
 			
+			if ($this->get('required') == 'no') {
+				$options[] = array();
+			}
+			
 			$states = General::listStructure(DOCROOT . $destination, null, false, 'asc', DOCROOT);
 			
 			if (is_null($states['filelist']) || empty($states['filelist'])) $states['filelist'] = array();
@@ -199,6 +203,7 @@
 			if($this->get('allow_multiple_selection') == 'yes') $fieldname .= '[]';
 
 			$label = Widget::Label($this->get('label'));
+			if($this->get('required') != 'yes') $label->appendChild(new XMLElement('i', __('Optional')));
 			$label->appendChild(Widget::Select($fieldname, $options, ($this->get('allow_multiple_selection') == 'yes' ? array('multiple' => 'multiple') : NULL)));
 
 			// Setup destination
