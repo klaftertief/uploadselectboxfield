@@ -22,20 +22,29 @@
 				select = manager.find('select'),
 				stage = manager.find('div.stage'),
 				selection = stage.find('ul.selection'),
-				queue = stage.find('div.queue ul'),
-				drawer = stage.data('templates.stage').templates.filter('.drawer').removeClass('template');
+				queue = stage.find('div.queue'),
+				queue_loaded = false;
 
 		/*-----------------------------------------------------------------------*/
+
+			// Constructing
+			stage.bind('constructstop', function(event, item) {
+				select.find('option[value='+$(item).attr('data-value')+']').attr('selected', 'selected');
+			});
+
+			// Destructing
+			stage.bind('destructstart', function(event, item) {
+				select.find('option[value='+$(item).attr('data-value')+']').removeAttr('selected');
+			});
+
+			// Prevent default events
+			stage.delegate('li', 'click', function(event) {
+				event.preventDefault();
+			});
 
 			// Searching
 			stage.bind('browsestart', function(event) {
 				browse();
-			});
-
-			// Selecting
-			queue.delegate('li', 'click', function(event) {
-				event.preventDefault();
-				select.find('option[value='+$(this).attr('data-value')+']').attr('selected', 'selected');
 			});
 
 		/*-----------------------------------------------------------------------*/
@@ -44,8 +53,8 @@
 			var browse = function() {
 
 				// Append queue if it's not present yet
-				if(queue.find('ul').size() == 0) {
-					var list = $('<ul class="queue loading"></ul>').hide().appendTo(queue).slideDown('fast'),
+				if(!queue_loaded) {
+					var list = queue.find('ul').addClass('loading').slideDown('fast'),
 						destination = manager.find('input[name*=destination]').val();
 
 					// Get queue items
@@ -69,15 +78,16 @@
 								$(result).hide().appendTo(list);
 
 								// Highlight selected items
-								selection.find('li').each(function(index, item) {
-									list.find('li[data-value="' + $(item).attr('data-value') + '"]').addClass('selected');
-								});
+								stage.trigger('update');
 							}
 
 							// Slide queue
 							list.find('li').slideDown('fast', function() {
 								$(this).parent('ul').removeClass('loading');
 							});
+							
+							// Save status
+							queue_loaded = true;
 						}
 					});
 				}
