@@ -38,13 +38,13 @@
 			});
 
 			// Prevent default events
-			stage.delegate('li', 'click', function(event) {
-				event.preventDefault();
-			});
-
 			// Searching
 			stage.bind('browsestart', function(event) {
 				browse();
+			});
+
+			queue.delegate('li', 'click', function(event) {
+				event.preventDefault();
 			});
 
 		/*-----------------------------------------------------------------------*/
