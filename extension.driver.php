@@ -128,12 +128,12 @@
 				if ($selected) {
 					// image
 					if(strpos($mimetype, 'image') !== false) {
-						$html[] = '<li class="preview" data-value="' . $path . '/' . $v . '"><img src="' . URL . '/image/2/40/40/5' . $path . '/' . $v . '" width="40" height="40" /><a href="' . URL . $destination . '/' . $v . '" class="image file">' . $v . '</a></li>';
+						$html[] = '<li class="preview" data-value="' . $path . '/' . $v . '"><img src="' . URL . '/image/2/40/40/5' . $path . '/' . $v . '" width="40" height="40" /><a href="' . URL . $destination . '/' . $v . '" class="image file"><em>' . $path . '/</em><br />' . $v . '</a></li>';
 					}
 					// file
 					else {
 						$extension = $this->getFileExtension($v);
-						$html[] = '<li class="preview" data-value="' . $path . '/' . $v . '"><strong class="file">' . $extension . '</strong><a href="' . URL . $destination . '/' . $v . '" class="file">' . $v . '</a></li>';
+						$html[] = '<li class="preview" data-value="' . $path . '/' . $v . '"><strong class="file">' . $extension . '</strong><a href="' . URL . $destination . '/' . $v . '" class="file"><em>' . $path . '/</em><br />' . $v . '</a></li>';
 					}
 				}
 			}
