@@ -1,9 +1,6 @@
 <?php
  
 	require_once(TOOLKIT . '/class.administrationpage.php');
-	require_once(TOOLKIT . '/class.sectionmanager.php');
-	require_once(TOOLKIT . '/class.entrymanager.php');
-	require_once(EXTENSIONS . '/uploadselectboxfield/lib/class.uploadselectboxfield.php');
 	
 	class contentExtensionUploadselectboxfieldGet extends AdministrationPage {
  
@@ -12,7 +9,6 @@
 		}
 
 		public function __viewIndex() {
-			// TODO $_GET security?
 			$items = array();
 			$states = General::listStructure(DOCROOT . $_GET['destination'], null, false, 'asc', DOCROOT);
 			$path = str_replace('/workspace', '', $_GET['destination']);

@@ -174,7 +174,6 @@
 
 		function displayPublishPanel(&$wrapper, $data=NULL, $flagWithError=NULL, $fieldnamePrefix=NULL, $fieldnamePostfix=NULL){
 			
-			$this->_engine->Page->addScriptToHead(URL . '/extensions/uploadselectboxfield/lib/draggable/draggable.publish.js', 101, false);
 			$this->_engine->Page->addScriptToHead(URL . '/extensions/uploadselectboxfield/lib/stage/stage.publish.js', 101, false);
 			$this->_engine->Page->addStylesheetToHead(URL . '/extensions/uploadselectboxfield/lib/stage/stage.publish.css', 'screen', 103, false);
 			$this->_engine->Page->addScriptToHead(URL . '/extensions/uploadselectboxfield/assets/symphony.uploadselectboxfield.js', 102, false);
