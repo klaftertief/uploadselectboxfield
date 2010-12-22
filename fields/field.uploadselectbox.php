@@ -7,11 +7,13 @@
 	require_once(EXTENSIONS . '/uploadselectboxfield/lib/stage/class.stage.php');
 
 	Class FieldUploadselectbox extends Field {
+		protected $_driver = null;
 
 		function __construct(&$parent){
 			parent::__construct($parent);
 			$this->_name = 'Upload Select Box';
 			$this->_required = true;
+			$this->_driver = $this->_engine->ExtensionManager->create('uploadselectboxfield');
 
 			$this->set('show_column', 'no');
 			$this->set('required', 'yes');
@@ -182,20 +184,12 @@
 			if(!is_array($data['file'])) $data['file'] = array($data['file']);
 			
 			$destination = $this->get('destination');
-			$abs_path = DOCROOT . '/' . trim($destination, '/');
-			$rel_path = str_replace('/workspace', '', $destination);
-			$options = array();
-			
+			$fileList = $this->_driver->createFileList($destination, $data['file']);
+
+			$options = $fileList['options'];
+
 			if ($this->get('required') == 'no') {
-				$options[] = array();
-			}
-			
-			$states = General::listStructure(DOCROOT . $destination, null, false, 'asc', DOCROOT);
-			
-			if (is_null($states['filelist']) || empty($states['filelist'])) $states['filelist'] = array();
-			
-			foreach($states['filelist'] as $handle => $v){
-				$options[] = array($rel_path . '/' . General::sanitize($v), in_array($rel_path . '/' . $v, $data['file']), $v);
+				array_unshift($options, array());
 			}
 
 			$fieldname = 'fields'.$fieldnamePrefix.'['.$this->get('element_name').']'.$fieldnamePostfix;
@@ -213,14 +207,7 @@
 			
 			// selected items
 			$content = array();
-			$items = array();
-			// TODO: create abstracted method
-			foreach($states['filelist'] as $handle => $v){
-				if (in_array($rel_path . '/' . $v, $data['file'])) {
-					$items[] = '<li class="preview" data-value="' . $rel_path . '/' . $v . '"><img src="' . URL . '/image/2/40/40/5' . $rel_path . '/' . $v . '" width="40" height="40" /><a href="' . URL . $destination . '/' . $v . '" class="image file">' . $v . '</a></li>';
-				}
-			}
-			$content['html'] = implode('', $items);
+			$content['html'] = $fileList['html'];
 			
 			// Get stage settings
 			$settings = ' ' . implode(' ', Stage::getComponents($this->get('id')));
@@ -236,17 +223,6 @@
 			$item = new XMLElement('li', $thumb . '<span>' . __('New item') . '<br /><em>' . __('Please fill out the form below.') . '</em></span><a class="destructor">' . __('Remove Item') . '</a>', array('class' => 'item template preview'));
 			$selected->appendChild($item);
 			
-			// Append drawer template
-			$subsection_handle = Administration::instance()->Database->fetchVar('handle', 0,
-				"SELECT `handle`
-				FROM `tbl_sections`
-				WHERE `id` = '" . $this->get('subsection_id') . "'
-				LIMIT 1"
-			);
-			$create_new = URL . '/symphony/publish/' . $subsection_handle;
-			$item = new XMLElement('li', '<iframe name="subsection-' . $this->get('element_name') . '" src="about:blank" target="' . $create_new . '"  frameborder="0"></iframe>', array('class' => 'drawer template'));
-			$selected->appendChild($item);
-
 			// Error handling
 			if($flagWithError != NULL) {
 				$wrapper->appendChild(Widget::wrapFormElementWithError($stage, $flagWithError));
@@ -371,10 +347,10 @@
 			$status = self::__OK__;
 			
 			if(!is_array($data)) {
-				$mimetype = $this->getMimetype(WORKSPACE . '/' . $data);
+				$mimetype = $this->_driver->getMimetype(WORKSPACE . '/' . $data);
 				return array(
 					'file' => General::sanitize($data),
-					'meta' => serialize(self::getMetaInfo(WORKSPACE . '/' . $data, $mimetype)),
+					'meta' => serialize($this->_driver->getMetaInfo(WORKSPACE . '/' . $data, $mimetype)),
 					'mimetype' => $mimetype,
 					'size' => (file_exists(WORKSPACE . '/' . $data) && is_readable(WORKSPACE . '/' . $data) ? filesize(WORKSPACE . '/' . $data) : 'unknown')
 				);
@@ -390,119 +366,14 @@
 			);
 
 			foreach($data as $file) {
-				$mimetype = $this->getMimetype(WORKSPACE . '/' . $file);
+				$mimetype = $this->_driver->getMimetype(WORKSPACE . '/' . $file);
 				$result['file'][] = General::sanitize($file);
-				$result['meta'][] = serialize(self::getMetaInfo(WORKSPACE . '/' . $file, 'image/jpg'));
+				$result['meta'][] = serialize($this->_driver->getMetaInfo(WORKSPACE . '/' . $file, 'image/jpg'));
 				$result['mimetype'][] = $mimetype;
 				$result['size'][] = (file_exists(WORKSPACE . '/' . $file) && is_readable(WORKSPACE . '/' . $file) ? filesize(WORKSPACE . '/' . $file) : 'unknown');
 			}
 			
 			return $result;
-		}
-
-		public static function getMetaInfo($file, $type){
-
-			$imageMimeTypes = array(
-				'image/gif',
-				'image/jpg',
-				'image/jpeg',
-				'image/pjpeg',
-				'image/png',
-			);
-			
-			$meta = array();
-			
-			$meta['creation'] = DateTimeObj::get('c', filemtime($file));
-			
-			if(General::in_iarray($type, $imageMimeTypes) && $array = @getimagesize($file)){
-				$meta['width']    = $array[0];
-				$meta['height']   = $array[1];
-			}
-			
-			return $meta;
-			
-		}
-
-		public static function getFileExtension($file){
-			$parts = explode('.', basename($file));
-			return array_pop($parts);
-		}
-
-		function getMimetype($file) {
-			
-			if (!(function_exists('finfo_open') && is_readable($file) && $finfo = new finfo(FILEINFO_MIME))) {
-				$ct['htm'] = 'text/html';
-				$ct['html'] = 'text/html';
-				$ct['txt'] = 'text/plain';
-				$ct['asc'] = 'text/plain';
-				$ct['bmp'] = 'image/bmp';
-				$ct['gif'] = 'image/gif';
-				$ct['jpeg'] = 'image/jpeg';
-				$ct['jpg'] = 'image/jpeg';
-				$ct['jpe'] = 'image/jpeg';
-				$ct['png'] = 'image/png';
-				$ct['ico'] = 'image/vnd.microsoft.icon';
-				$ct['mpeg'] = 'video/mpeg';
-				$ct['mpg'] = 'video/mpeg';
-				$ct['mpe'] = 'video/mpeg';
-				$ct['qt'] = 'video/quicktime';
-				$ct['mov'] = 'video/quicktime';
-				$ct['avi']  = 'video/x-msvideo';
-				$ct['wmv'] = 'video/x-ms-wmv';
-				$ct['mp2'] = 'audio/mpeg';
-				$ct['mp3'] = 'audio/mpeg';
-				$ct['rm'] = 'audio/x-pn-realaudio';
-				$ct['ram'] = 'audio/x-pn-realaudio';
-				$ct['rpm'] = 'audio/x-pn-realaudio-plugin';
-				$ct['ra'] = 'audio/x-realaudio';
-				$ct['wav'] = 'audio/x-wav';
-				$ct['css'] = 'text/css';
-				$ct['zip'] = 'application/zip';
-				$ct['pdf'] = 'application/pdf';
-				$ct['doc'] = 'application/msword';
-				$ct['bin'] = 'application/octet-stream';
-				$ct['exe'] = 'application/octet-stream';
-				$ct['class']= 'application/octet-stream';
-				$ct['dll'] = 'application/octet-stream';
-				$ct['xls'] = 'application/vnd.ms-excel';
-				$ct['ppt'] = 'application/vnd.ms-powerpoint';
-				$ct['wbxml']= 'application/vnd.wap.wbxml';
-				$ct['wmlc'] = 'application/vnd.wap.wmlc';
-				$ct['wmlsc']= 'application/vnd.wap.wmlscriptc';
-				$ct['dvi'] = 'application/x-dvi';
-				$ct['spl'] = 'application/x-futuresplash';
-				$ct['gtar'] = 'application/x-gtar';
-				$ct['gzip'] = 'application/x-gzip';
-				$ct['js'] = 'application/x-javascript';
-				$ct['swf'] = 'application/x-shockwave-flash';
-				$ct['tar'] = 'application/x-tar';
-				$ct['xhtml']= 'application/xhtml+xml';
-				$ct['au'] = 'audio/basic';
-				$ct['snd'] = 'audio/basic';
-				$ct['midi'] = 'audio/midi';
-				$ct['mid'] = 'audio/midi';
-				$ct['m3u'] = 'audio/x-mpegurl';
-				$ct['tiff'] = 'image/tiff';
-				$ct['tif'] = 'image/tiff';
-				$ct['rtf'] = 'text/rtf';
-				$ct['wml'] = 'text/vnd.wap.wml';
-				$ct['wmls'] = 'text/vnd.wap.wmlscript';
-				$ct['xsl'] = 'text/xml';
-				$ct['xml'] = 'text/xml';
-
-				$extension = $this->getFileExtension($value);
-				if (!$type = $ct[strtolower($extension)]) {
-					$type = 'unknown';
-				}
-			} else {
-				$type = $finfo->file($file);
-				// remove charset (added as of PHP 5.3)
-				if (false !== $pos = strpos($type, ';')) {
-					$type = substr($type, 0, $pos);
-				}
-			}
-			
-			return $type;
 		}
 
 		function createTable(){
