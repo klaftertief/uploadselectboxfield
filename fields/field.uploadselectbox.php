@@ -81,7 +81,7 @@
 				'/workspace/pages',
 				'/workspace/utilities'
 			);
-			$directories = General::listDirStructure(WORKSPACE, true, 'asc', DOCROOT, $ignore);
+			$directories = General::listDirStructure(WORKSPACE, null, true, DOCROOT, $ignore);
 
 			$label = Widget::Label(__('Destination Directory'));
 
@@ -101,14 +101,29 @@
 
 			$this->appendRequiredCheckbox($wrapper);
 
-			## Allow selection of multiple items
+			// Behaviour
+			$fieldset = Stage::displaySettings(
+				$this->get('id'), 
+				$this->get('sortorder'), 
+				__('Behaviour')
+			);
+
+			// Setting: allow multiple
 			$label = Widget::Label();
 			$input = Widget::Input('fields['.$this->get('sortorder').'][allow_multiple_selection]', 'yes', 'checkbox');
 			if($this->get('allow_multiple_selection') == 'yes') $input->setAttribute('checked', 'checked');
 			$label->setValue(__('%s Allow selection of multiple options', array($input->generate())));
-			$wrapper->appendChild($label);
+			$label->appendChild(new XMLElement('i', __('This will switch between single and multiple item lists')));
+			$div = $fieldset->getChildren();
+			$div[0]->appendChild($label);
 
-			$this->appendShowColumnCheckbox($wrapper);
+			// Append behaviour settings
+			$wrapper->appendChild($fieldset);
+
+			// General
+			$fieldset = new XMLElement('fieldset');
+			$this->appendShowColumnCheckbox($fieldset);
+			$wrapper->appendChild($fieldset);
 
 		}
 
