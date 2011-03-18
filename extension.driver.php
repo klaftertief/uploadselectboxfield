@@ -44,6 +44,7 @@
 				`field_id` int(11) unsigned NOT NULL,
 				`allow_multiple_selection` enum('yes','no') NOT NULL default 'no',
 				`destination` varchar(255) NOT NULL,
+				`validator` varchar(255) default NULL,
 				PRIMARY KEY  (`id`),
 				UNIQUE KEY `field_id` (`field_id`)
 			) TYPE=MyISAM");
@@ -64,6 +65,12 @@
 
 				// Install missing tables
 				$this->install();
+
+				// Update existind field settings table
+				Symphony::Database()->query(
+					"ALTER TABLE `tbl_fields_uploadselectbox`
+					ADD COLUMN `validator` varchar(255) default NULL"
+				);
 
 				// Update existing field data tables
 				$fields = array();
