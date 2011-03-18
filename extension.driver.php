@@ -28,7 +28,7 @@
 		}
 
 		public function uninstall(){
-			Symphony::Database()->query("DROP TABLE `tbl_fields_uploadselectbox`");
+			Symphony::Database()->query("DROP TABLE IF NOT EXISTS `tbl_fields_uploadselectbox`");
 
 			// Drop related entries from stage tables
 			Symphony::Database()->query("DELETE FROM `tbl_fields_stage` WHERE `context` = 'uploadselectbox'");
@@ -39,7 +39,7 @@
 			$status = array();
 
 			// Create database field table
-			$status[] = Symphony::Database()->query("CREATE TABLE `tbl_fields_uploadselectbox` (
+			$status[] = Symphony::Database()->query("CREATE TABLE IF NOT EXISTS `tbl_fields_uploadselectbox` (
 				`id` int(11) unsigned NOT NULL auto_increment,
 				`field_id` int(11) unsigned NOT NULL,
 				`allow_multiple_selection` enum('yes','no') NOT NULL default 'no',
