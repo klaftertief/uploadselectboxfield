@@ -107,6 +107,14 @@
 			if(isset($errors['destination'])) $wrapper->appendChild(Widget::wrapFormElementWithError($label, $errors['destination']));
 			else $wrapper->appendChild($label);
 
+			// Setting: allow subfolders
+			$label = Widget::Label();
+			$input = Widget::Input('fields['.$this->get('sortorder').'][allow_subfolders]', 'yes', 'checkbox');
+			if($this->get('allow_subfolders') == 'yes') $input->setAttribute('checked', 'checked');
+			$label->setValue(__('%s Allow subfolders', array($input->generate())));
+			$label->appendChild(new XMLElement('i', __('This will add a dropdown to select subfolders')));
+			$wrapper->appendChild($label);
+
 			$this->buildValidationSelect($wrapper, $this->get('validator'), 'fields['.$this->get('sortorder').'][validator]', 'upload');
 
 			// Behaviour
@@ -176,15 +184,13 @@
 			$label = Widget::Label($this->get('label'));
 			$label->appendChild(Widget::Select($fieldname, $options, ($this->get('allow_multiple_selection') == 'yes' ? array('multiple' => 'multiple') : NULL)));
 
-			// if($flagWithError != NULL) $wrapper->appendChild(Widget::wrapFormElementWithError($label, $flagWithError));
-			// else $wrapper->appendChild($label);
 			$wrapper->appendChild($label);
 
 			// Get stage settings
 			$settings = ' ' . implode(' ', Stage::getComponents($this->get('id')));
 
 			// Create stage
-			$stage = new XMLElement('div', NULL, array('class' => 'stage' . $settings . ($this->get('show_preview') == 1 ? ' preview' : '') . ($this->get('allow_multiple_selection') == 'yes' ? ' multiple' : ' single')));
+			$stage = new XMLElement('div', NULL, array('class' => 'stage' . $settings . ($this->get('show_preview') == 1 ? ' preview' : '') . ($this->get('allow_multiple_selection') == 'yes' ? ' multiple' : ' single') . ($this->get('allow_subfolders') == 'yes' ? ' subfolder' : '')));
 			$content['empty'] = '<li class="empty message"><span>' . __('There are no selected items') . '</span></li>';
 			$selected = new XMLElement('ul', $content['empty'] . $content['html'], array('class' => 'selection'));
 			$stage->appendChild($selected);
@@ -294,6 +300,7 @@
 			$fields['field_id'] = $id;
 			$fields['destination'] = $this->get('destination');
 			$fields['allow_multiple_selection'] = ($this->get('allow_multiple_selection') ? $this->get('allow_multiple_selection') : 'no');
+			$fields['allow_subfolders'] = ($this->get('allow_subfolders') ? $this->get('allow_subfolders') : 'no');
 			$fields['validator'] = ($fields['validator'] == 'custom' ? NULL : $this->get('validator'));
 
 			// Save new stage settings for this field
