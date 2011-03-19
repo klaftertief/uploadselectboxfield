@@ -4,12 +4,20 @@
 
 	if(!defined('__IN_SYMPHONY__')) die('<h2>Symphony Error</h2><p>You cannot directly access this file</p>');
 
+	if(!class_exists('Stage')) {
+		require_once(EXTENSIONS . '/subsectionmanager/lib/stage/class.stage.php');
+	}
+
 	Class FieldUploadselectbox extends Field {
 
 		function __construct(&$parent){
 			parent::__construct($parent);
 			$this->_name = 'Upload Select Box';
+			$this->_required = true;
+			
 			$this->set('show_column', 'no');
+			$this->set('location', 'sidebar');
+			$this->set('required', 'no');
 		}
 
 		function canToggle(){
@@ -99,7 +107,7 @@
 			if(isset($errors['destination'])) $wrapper->appendChild(Widget::wrapFormElementWithError($label, $errors['destination']));
 			else $wrapper->appendChild($label);
 
-			$this->appendRequiredCheckbox($wrapper);
+			$this->buildValidationSelect($wrapper, $this->get('validator'), 'fields['.$this->get('sortorder').'][validator]', 'upload');
 
 			// Behaviour
 			$fieldset = Stage::displaySettings(
@@ -122,21 +130,44 @@
 
 			// General
 			$fieldset = new XMLElement('fieldset');
-			$this->appendShowColumnCheckbox($fieldset);
+			$div = new XMLElement('div', NULL, array('class' => 'compact'));
+			$this->appendRequiredCheckbox($div);
+			$this->appendShowColumnCheckbox($div);
+			$fieldset->appendChild($div);
 			$wrapper->appendChild($fieldset);
 
 		}
 
 		function displayPublishPanel(&$wrapper, $data=NULL, $flagWithError=NULL, $fieldnamePrefix=NULL, $fieldnamePostfix=NULL){
+			Administration::instance()->Page->addScriptToHead(URL . '/extensions/uploadselectboxfield/lib/stage/stage.publish.js', 101, false);
+			Administration::instance()->Page->addStylesheetToHead(URL . '/extensions/uploadselectboxfield/lib/stage/stage.publish.css', 'screen', 103, false);
+			Administration::instance()->Page->addScriptToHead(URL . '/extensions/uploadselectboxfield/assets/uploadselectboxfield.publish.js', 104, false);
+
 			if(!is_array($data['file'])) $data['file'] = array($data['file']);
 
 			$options = array();
-			$states = General::listStructure(DOCROOT . $this->get('destination'), null, false, 'asc', DOCROOT);
-			
+
+			if ($this->get('required') != 'yes') $options[] = array(NULL, false, NULL);
+
+			$states = General::listStructure(DOCROOT . $this->get('destination'), $this->get('validator'), true, 'asc', DOCROOT);
+
 			if (is_null($states['filelist']) || empty($states['filelist'])) $states['filelist'] = array();
-			
+
 			foreach($states['filelist'] as $handle => $v){
 				$options[] = array(General::sanitize($v), in_array($v, $data['file']), $v);
+			}
+
+			if (is_array($states['dirlist']) && !empty($states['dirlist'])) {
+				foreach($states['dirlist'] as $directory){
+					$directoryOptions = array();
+
+					if (is_array($states[$this->get('destination') . '/' . $directory . '/']['filelist']) && !empty($states[$this->get('destination') . '/' . $directory . '/']['filelist'])) {
+						foreach($states[$this->get('destination') . '/' . $directory . '/']['filelist'] as $handle => $v){
+							$directoryOptions[] = array(General::sanitize($v), in_array($v, $data['file']), $v);
+						}
+						$options[] = array('label' => $directory, 'options' => $directoryOptions);
+					}
+				}
 			}
 
 			$fieldname = 'fields'.$fieldnamePrefix.'['.$this->get('element_name').']'.$fieldnamePostfix;
@@ -145,8 +176,25 @@
 			$label = Widget::Label($this->get('label'));
 			$label->appendChild(Widget::Select($fieldname, $options, ($this->get('allow_multiple_selection') == 'yes' ? array('multiple' => 'multiple') : NULL)));
 
-			if($flagWithError != NULL) $wrapper->appendChild(Widget::wrapFormElementWithError($label, $flagWithError));
-			else $wrapper->appendChild($label);
+			// if($flagWithError != NULL) $wrapper->appendChild(Widget::wrapFormElementWithError($label, $flagWithError));
+			// else $wrapper->appendChild($label);
+			$wrapper->appendChild($label);
+
+			// Get stage settings
+			$settings = ' ' . implode(' ', Stage::getComponents($this->get('id')));
+
+			// Create stage
+			$stage = new XMLElement('div', NULL, array('class' => 'stage' . $settings . ($this->get('show_preview') == 1 ? ' preview' : '') . ($this->get('allow_multiple_selection') == 'yes' ? ' multiple' : ' single')));
+			$content['empty'] = '<li class="empty message"><span>' . __('There are no selected items') . '</span></li>';
+			$selected = new XMLElement('ul', $content['empty'] . $content['html'], array('class' => 'selection'));
+			$stage->appendChild($selected);
+
+			if($flagWithError != NULL) {
+				$wrapper->appendChild(Widget::wrapFormElementWithError($stage, $flagWithError));
+			}
+			else {
+				$wrapper->appendChild($stage);
+			}
 		}
 
 		function prepareTableValue($data, XMLElement $link=NULL){
@@ -246,6 +294,10 @@
 			$fields['field_id'] = $id;
 			$fields['destination'] = $this->get('destination');
 			$fields['allow_multiple_selection'] = ($this->get('allow_multiple_selection') ? $this->get('allow_multiple_selection') : 'no');
+			$fields['validator'] = ($fields['validator'] == 'custom' ? NULL : $this->get('validator'));
+
+			// Save new stage settings for this field
+			Stage::saveSettings($this->get('id'), $this->get('stage'), 'subsectionmanager');
 
 			$this->_engine->Database->query("DELETE FROM `tbl_fields_".$this->handle()."` WHERE `field_id` = '$id' LIMIT 1");
 			return $this->_engine->Database->insert($fields, 'tbl_fields_' . $this->handle());
@@ -271,15 +323,20 @@
 
 		function createTable(){
 
-			return $this->_engine->Database->query(
+			return Symphony::Database()->query(
 
 				"CREATE TABLE IF NOT EXISTS `tbl_entries_data_" . $this->get('id') . "` (
 				  `id` int(11) unsigned NOT NULL auto_increment,
 				  `entry_id` int(11) unsigned NOT NULL,
 				  `file` varchar(255) default NULL,
+				  `size` int(11) unsigned NULL,
+				  `mimetype` varchar(50) default NULL,
+				  `meta` varchar(255) default NULL,
 				  PRIMARY KEY  (`id`),
-				  KEY `entry_id` (`entry_id`)
-				);"
+				  UNIQUE KEY `entry_id` (`entry_id`),
+				  KEY `file` (`file`),
+				  KEY `mimetype` (`mimetype`)
+				) ENGINE=MyISAM;"
 
 			);
 		}
