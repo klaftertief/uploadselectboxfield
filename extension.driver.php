@@ -45,7 +45,7 @@
 				`allow_multiple_selection` enum('yes','no') NOT NULL default 'no',
 				`destination` varchar(255) NOT NULL,
 				`validator` varchar(255) default NULL,
-				`allow_subfolders` enum('yes','no') NOT NULL default 'no',
+				`allow_subdirectories` enum('yes','no') NOT NULL default 'no',
 				PRIMARY KEY  (`id`),
 				UNIQUE KEY `field_id` (`field_id`)
 			) TYPE=MyISAM");
@@ -71,7 +71,7 @@
 				Symphony::Database()->query(
 					"ALTER TABLE `tbl_fields_uploadselectbox`
 					ADD COLUMN `validator` varchar(255) default NULL,
-					ADD COLUMN `allow_subfolders` enum('yes','no') NOT NULL default 'no'"
+					ADD COLUMN `allow_subdirectories` enum('yes','no') NOT NULL default 'no'"
 				);
 
 				// Update existing field data tables

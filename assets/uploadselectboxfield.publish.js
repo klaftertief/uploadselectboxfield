@@ -4,11 +4,16 @@
 
 		$('.field-uploadselectbox').each(function() {
 			var $field = $(this),
-				$storage = $field.find('select'),
+				$storage = $field.find('label:first select'),
 				$stage = $field.find('.stage'),
 				$selection = $stage.find('.selection'),
-				queue_loaded = false,
+				$subdirectory = $field.find('label.subdirectory'),
 				$queue = $stage.find('.queue');
+			
+			if($stage.is('.subdirectory')) {
+				// $subdirectory.prependTo($queue);
+				$queue.prepend($subdirectory);
+			}
 			
 			$stage.bind('browsestart', function(event) {
 				browse();
@@ -19,42 +24,37 @@
 			});
 			
 			function browse(){
-				if(queue_loaded == false) {
-					var $list = $queue.find('ul').addClass('loading').slideDown('fast'),
-						$html = '';
-					
-					$.ajax({
-						url: Symphony.Context.get('root') + '/symphony/extension/uploadselectboxfield/getfilelist/',
-						type: 'GET',
-						dataType: 'json',
-						data: {
-							destination: '/workspace/media/images'
-						},
-						complete: function(xhr, textStatus) {
-							//called when complete
-						},
-						success: function(data, textStatus, xhr) {
-							if (!data.filelist.length) {
-								$list.html('<li>Nothing</li>');
-							} else {
-								$.each(data.filelist, function(index, val) {
-									$html += ('<li data-value="' + val + '"><span>' + val + '</span></li>');
-								});
-								$list.html($html);
-								
-								$stage.trigger('update');
-							};
+				var $list = $queue.find('ul').addClass('loading').hide().html(''),
+					$html = '';
+				
+				$.ajax({
+					url: Symphony.Context.get('root') + '/symphony/extension/uploadselectboxfield/getfilelist/',
+					type: 'GET',
+					dataType: 'json',
+					data: {
+						destination: $subdirectory.find('select').val()
+					},
+					complete: function(xhr, textStatus) {
+						//called when complete
+					},
+					success: function(data, textStatus, xhr) {
+						if (!data.filelist.length) {
+							$list.html('<li>Nothing</li>');
+						} else {
+							$.each(data.filelist, function(index, val) {
+								$html += ('<li data-value="' + $subdirectory.find('select').val() + '/' + val + '"><span><em>' + $subdirectory.find('select').val() + '/</em><br />' + val + '</span></li>');
+							});
+							$list.html($html);
 							
-							$list.removeClass('loading');
-							
-							// Save status
-							queue_loaded = true;
-						},
-						error: function(xhr, textStatus, errorThrown) {
-							//called when there is an error
-						}
-					});
-				}
+							$stage.trigger('update');
+						};
+						
+						$list.slideDown('fast').removeClass('loading');
+					},
+					error: function(xhr, textStatus, errorThrown) {
+						//called when there is an error
+					}
+				});
 			}
 			
 			function sync(){

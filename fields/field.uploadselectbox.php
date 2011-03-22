@@ -107,12 +107,12 @@
 			if(isset($errors['destination'])) $wrapper->appendChild(Widget::wrapFormElementWithError($label, $errors['destination']));
 			else $wrapper->appendChild($label);
 
-			// Setting: allow subfolders
+			// Setting: allow subdirectories
 			$label = Widget::Label();
-			$input = Widget::Input('fields['.$this->get('sortorder').'][allow_subfolders]', 'yes', 'checkbox');
-			if($this->get('allow_subfolders') == 'yes') $input->setAttribute('checked', 'checked');
-			$label->setValue(__('%s Allow subfolders', array($input->generate())));
-			$label->appendChild(new XMLElement('i', __('This will add a dropdown to select subfolders')));
+			$input = Widget::Input('fields['.$this->get('sortorder').'][allow_subdirectories]', 'yes', 'checkbox');
+			if($this->get('allow_subdirectories') == 'yes') $input->setAttribute('checked', 'checked');
+			$label->setValue(__('%s Allow subdirectories', array($input->generate())));
+			$label->appendChild(new XMLElement('i', __('This will add a dropdown to select subdirectories')));
 			$wrapper->appendChild($label);
 
 			$this->buildValidationSelect($wrapper, $this->get('validator'), 'fields['.$this->get('sortorder').'][validator]', 'upload');
@@ -162,16 +162,16 @@
 			if (is_null($states['filelist']) || empty($states['filelist'])) $states['filelist'] = array();
 
 			foreach($states['filelist'] as $handle => $v){
-				$options[] = array(General::sanitize($v), in_array($v, $data['file']), $v);
+				$options[] = array($this->get('destination') . '/' . General::sanitize($v), in_array($v, $data['file']), $v);
 			}
 
-			if (is_array($states['dirlist']) && !empty($states['dirlist'])) {
+			if ($this->get('allow_subdirectories') == 'yes' && is_array($states['dirlist']) && !empty($states['dirlist'])) {
 				foreach($states['dirlist'] as $directory){
 					$directoryOptions = array();
 
 					if (is_array($states[$this->get('destination') . '/' . $directory . '/']['filelist']) && !empty($states[$this->get('destination') . '/' . $directory . '/']['filelist'])) {
 						foreach($states[$this->get('destination') . '/' . $directory . '/']['filelist'] as $handle => $v){
-							$directoryOptions[] = array(General::sanitize($v), in_array($v, $data['file']), $v);
+							$directoryOptions[] = array($this->get('destination') . '/' . $directory . '/' . General::sanitize($v), in_array($v, $data['file']), $v);
 						}
 						$options[] = array('label' => $directory, 'options' => $directoryOptions);
 					}
@@ -186,11 +186,32 @@
 
 			$wrapper->appendChild($label);
 
+			// subdirectories
+			if ($this->get('allow_subdirectories') == 'yes') {
+				$directories = General::listDirStructure(DOCROOT . $this->get('destination'), null, true, DOCROOT . $this->get('destination'));
+
+				$label = Widget::Label(__('Sub-Directory'), null, 'subdirectory');
+
+				$options = array();
+				$options[] = array($this->get('destination'), false, '/');
+
+				if(!empty($directories) && is_array($directories)){
+					foreach($directories as $d) {
+						$d = '/' . trim($d, '/');
+						$options[] = array($this->get('destination') . $d, false, $d);
+					}
+				}
+
+				$label->appendChild(Widget::Select('fields['.$this->get('sortorder').'][destination]', $options));
+
+				$wrapper->appendChild($label);
+			}
+
 			// Get stage settings
 			$settings = ' ' . implode(' ', Stage::getComponents($this->get('id')));
 
 			// Create stage
-			$stage = new XMLElement('div', NULL, array('class' => 'stage' . $settings . ($this->get('show_preview') == 1 ? ' preview' : '') . ($this->get('allow_multiple_selection') == 'yes' ? ' multiple' : ' single') . ($this->get('allow_subfolders') == 'yes' ? ' subfolder' : '')));
+			$stage = new XMLElement('div', NULL, array('class' => 'stage' . $settings . ($this->get('show_preview') == 1 ? ' preview' : '') . ($this->get('allow_multiple_selection') == 'yes' ? ' multiple' : ' single') . ($this->get('allow_subdirectories') == 'yes' ? ' subdirectory' : '')));
 			$content['empty'] = '<li class="empty message"><span>' . __('There are no selected items') . '</span></li>';
 			$selected = new XMLElement('ul', $content['empty'] . $content['html'], array('class' => 'selection'));
 			$stage->appendChild($selected);
@@ -300,7 +321,7 @@
 			$fields['field_id'] = $id;
 			$fields['destination'] = $this->get('destination');
 			$fields['allow_multiple_selection'] = ($this->get('allow_multiple_selection') ? $this->get('allow_multiple_selection') : 'no');
-			$fields['allow_subfolders'] = ($this->get('allow_subfolders') ? $this->get('allow_subfolders') : 'no');
+			$fields['allow_subdirectories'] = ($this->get('allow_subdirectories') ? $this->get('allow_subdirectories') : 'no');
 			$fields['validator'] = ($fields['validator'] == 'custom' ? NULL : $this->get('validator'));
 
 			// Save new stage settings for this field
