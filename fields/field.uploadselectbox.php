@@ -187,26 +187,34 @@
 				}
 			}
 
+			// Get stage settings
+			$settings = implode(' ', Stage::getComponents($this->get('id'))) . ($this->get('show_preview') == 1 ? ' preview' : '') . ($this->get('allow_multiple_selection') == 'yes' ? ' multiple' : ' single') . ($this->get('allow_subdirectories') == 'yes' ? ' subdirectories' : '');
+
 			$label = Widget::Label($this->get('label'));
-			$label->setAttribute('data-fieldname', 'fields['.$this->get('sortorder').'][destination]');
 
 			$label->appendChild(Widget::Select($fieldname, $options, ($this->get('allow_multiple_selection') == 'yes' ? array('multiple' => 'multiple') : NULL)));
 
+			$wrapper->setAttribute('data-fieldname', 'fields['.$this->get('sortorder').'][destination]');
+			$wrapper->setAttribute('data-stage-settings', $settings);
 			$wrapper->appendChild($label);
 
-			// Get stage settings
-			$settings = ' ' . implode(' ', Stage::getComponents($this->get('id')));
-
 			// Create stage
-			$stage = new XMLElement('div', NULL, array('class' => 'stage' . $settings . ($this->get('show_preview') == 1 ? ' preview' : '') . ($this->get('allow_multiple_selection') == 'yes' ? ' multiple' : ' single') . ($this->get('allow_subdirectories') == 'yes' ? ' subdirectories' : '')));
+			$stage = new XMLElement('div', NULL, array('class' => 'stage ' . $settings));
 			$empty = new XMLElement('li', NULL, array('class' => 'empty message'));
 			$empty->appendChild(new XMLElement('span', __('There are no selected items')));
 			$selected = new XMLElement('ul', NULL, array('class' => 'selection'));
 			$selected->appendChild($empty);
-
+			
 			foreach ($data['file'] as $file) {
 				$listItem = new XMLElement('li', NULL, array('data-value' => $file));
 				$inner = new XMLElement('span');
+				if (General::validateString($file, '/\.(?:bmp|gif|jpe?g|png)$/i')) {
+					$image = new XMLElement('img');
+					$image->setAttribute('src', URL . '/image/2/40/40/5' . $file);
+					$listItem->appendChild($image);
+					$listItem->setAttribute('class', 'preview');
+					$inner->setAttribute('class', 'image file');
+				}
 				$inner->appendChild(new XMLElement('em', dirname($file)));
 				$inner->appendChild(new XMLElement('br'));
 				$inner->setValue(basename($file), false);
@@ -214,7 +222,7 @@
 				$listItem->appendChild(Widget::Input($fieldname, $file, 'hidden'));
 				$selected->appendChild($listItem);
 			}
-
+			
 			$stage->appendChild($selected);
 
 			if($flagWithError != NULL) {

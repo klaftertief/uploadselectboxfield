@@ -68,6 +68,7 @@
 							$.each(data, function(index, val) {
 								var path = directory + '/' + val,
 									image = val.match(/\.(?:bmp|gif|jpe?g|png)$/i) ? '<img width="40" height="40" src="' + Symphony.Context.get('root') + '/image/2/40/40/5' + path + '"/>' : '';
+								// TODO create function
 								html += '<li class="preview" data-value="' + path + '">' + image + '<span class="file image"><em>' + directory + '/</em><br />' + val + '</span><input type="hidden" disabled="disabled" value="' + path + '" name="fields[files][]"/></li>';
 							});
 							console.log(html);
