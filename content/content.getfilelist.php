@@ -10,11 +10,12 @@
 		}
 
 		public function view(){
-			$directory = $_GET['destination'] ? $_GET['destination'] : '/workspace';
+			$directory = WORKSPACE . $_GET['destination'];
+			$filter = '/' . $_GET['filter'] . '/';
 
-			$states = General::listStructure(DOCROOT . $directory, null, false, 'asc', DOCROOT);
+			$states = General::listStructure($directory, $filter, false, 'asc', $directory);
 
-			$this->_Result = json_encode($states);
+			$this->_Result = json_encode($states['filelist']);
 		}
 
 		public function generate(){

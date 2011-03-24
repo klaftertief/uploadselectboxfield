@@ -148,72 +148,73 @@
 
 		function displayPublishPanel(&$wrapper, $data=NULL, $flagWithError=NULL, $fieldnamePrefix=NULL, $fieldnamePostfix=NULL){
 			Administration::instance()->Page->addScriptToHead(URL . '/extensions/uploadselectboxfield/lib/stage/stage.publish.js', 101, false);
+			Administration::instance()->Page->addScriptToHead(URL . '/extensions/uploadselectboxfield/assets/uploadselectboxfield.publish.js', 102, false);
+
 			Administration::instance()->Page->addStylesheetToHead(URL . '/extensions/uploadselectboxfield/lib/stage/stage.publish.css', 'screen', 103, false);
-			Administration::instance()->Page->addScriptToHead(URL . '/extensions/uploadselectboxfield/assets/uploadselectboxfield.publish.js', 104, false);
+			Administration::instance()->Page->addStylesheetToHead(URL . '/extensions/uploadselectboxfield/assets/uploadselectboxfield.publish.css', 'screen', 104, false);
 
 			if(!is_array($data['file'])) $data['file'] = array($data['file']);
-
-			$options = array();
-
-			if ($this->get('required') != 'yes') $options[] = array(NULL, false, NULL);
-
-			$states = General::listStructure(DOCROOT . $this->get('destination'), $this->get('validator'), true, 'asc', DOCROOT);
-
-			if (is_null($states['filelist']) || empty($states['filelist'])) $states['filelist'] = array();
-
-			foreach($states['filelist'] as $handle => $v){
-				$options[] = array($this->get('destination') . '/' . General::sanitize($v), in_array($v, $data['file']), $v);
-			}
-
-			if ($this->get('allow_subdirectories') == 'yes' && is_array($states['dirlist']) && !empty($states['dirlist'])) {
-				foreach($states['dirlist'] as $directory){
-					$directoryOptions = array();
-
-					if (is_array($states[$this->get('destination') . '/' . $directory . '/']['filelist']) && !empty($states[$this->get('destination') . '/' . $directory . '/']['filelist'])) {
-						foreach($states[$this->get('destination') . '/' . $directory . '/']['filelist'] as $handle => $v){
-							$directoryOptions[] = array($this->get('destination') . '/' . $directory . '/' . General::sanitize($v), in_array($v, $data['file']), $v);
-						}
-						$options[] = array('label' => $directory, 'options' => $directoryOptions);
-					}
-				}
-			}
 
 			$fieldname = 'fields'.$fieldnamePrefix.'['.$this->get('element_name').']'.$fieldnamePostfix;
 			if($this->get('allow_multiple_selection') == 'yes') $fieldname .= '[]';
 
+			$destination = str_replace('/workspace', '', $this->get('destination'));
+			$options = array();
+
+			if ($this->get('required') != 'yes') $options[] = array(NULL, false, NULL);
+
+			$states = General::listStructure(WORKSPACE . $destination, $this->get('validator'), true, 'asc', WORKSPACE);
+
+			if (is_null($states['filelist']) || empty($states['filelist'])) $states['filelist'] = array();
+
+			$directoryOptions = array();
+			foreach($states['filelist'] as $handle => $v){
+				$directoryOptions[] = array($destination . '/' . General::sanitize($v), in_array($destination . '/' . General::sanitize($v), $data['file']), $v);
+			}
+			$options[] = array('label' => $destination, 'options' => $directoryOptions);
+
+			// TODO recursive method
+			if ($this->get('allow_subdirectories') == 'yes' && is_array($states['dirlist']) && !empty($states['dirlist'])) {
+				foreach($states['dirlist'] as $directory){
+					$directoryOptions = array();
+
+					if (is_array($states[$destination . '/' . $directory . '/']['filelist']) && !empty($states[$destination . '/' . $directory . '/']['filelist'])) {
+						foreach($states[$destination . '/' . $directory . '/']['filelist'] as $handle => $v){
+							$directoryOptions[] = array($destination . '/' . $directory . '/' . General::sanitize($v), in_array($destination . '/' . $directory . '/' . General::sanitize($v), $data['file']), $v);
+						}
+						$options[] = array('label' => $destination . '/' . $directory, 'options' => $directoryOptions);
+					}
+				}
+			}
+
 			$label = Widget::Label($this->get('label'));
+			$label->setAttribute('data-fieldname', 'fields['.$this->get('sortorder').'][destination]');
+
 			$label->appendChild(Widget::Select($fieldname, $options, ($this->get('allow_multiple_selection') == 'yes' ? array('multiple' => 'multiple') : NULL)));
 
 			$wrapper->appendChild($label);
-
-			// subdirectories
-			if ($this->get('allow_subdirectories') == 'yes') {
-				$directories = General::listDirStructure(DOCROOT . $this->get('destination'), null, true, DOCROOT . $this->get('destination'));
-
-				$label = Widget::Label(__('Sub-Directory'), null, 'subdirectory');
-
-				$options = array();
-				$options[] = array($this->get('destination'), false, '/');
-
-				if(!empty($directories) && is_array($directories)){
-					foreach($directories as $d) {
-						$d = '/' . trim($d, '/');
-						$options[] = array($this->get('destination') . $d, false, $d);
-					}
-				}
-
-				$label->appendChild(Widget::Select('fields['.$this->get('sortorder').'][destination]', $options));
-
-				$wrapper->appendChild($label);
-			}
 
 			// Get stage settings
 			$settings = ' ' . implode(' ', Stage::getComponents($this->get('id')));
 
 			// Create stage
-			$stage = new XMLElement('div', NULL, array('class' => 'stage' . $settings . ($this->get('show_preview') == 1 ? ' preview' : '') . ($this->get('allow_multiple_selection') == 'yes' ? ' multiple' : ' single') . ($this->get('allow_subdirectories') == 'yes' ? ' subdirectory' : '')));
-			$content['empty'] = '<li class="empty message"><span>' . __('There are no selected items') . '</span></li>';
-			$selected = new XMLElement('ul', $content['empty'] . $content['html'], array('class' => 'selection'));
+			$stage = new XMLElement('div', NULL, array('class' => 'stage' . $settings . ($this->get('show_preview') == 1 ? ' preview' : '') . ($this->get('allow_multiple_selection') == 'yes' ? ' multiple' : ' single') . ($this->get('allow_subdirectories') == 'yes' ? ' subdirectories' : '')));
+			$empty = new XMLElement('li', NULL, array('class' => 'empty message'));
+			$empty->appendChild(new XMLElement('span', __('There are no selected items')));
+			$selected = new XMLElement('ul', NULL, array('class' => 'selection'));
+			$selected->appendChild($empty);
+
+			foreach ($data['file'] as $file) {
+				$listItem = new XMLElement('li', NULL, array('data-value' => $file));
+				$inner = new XMLElement('span');
+				$inner->appendChild(new XMLElement('em', dirname($file)));
+				$inner->appendChild(new XMLElement('br'));
+				$inner->setValue(basename($file), false);
+				$listItem->appendChild($inner);
+				$listItem->appendChild(Widget::Input($fieldname, $file, 'hidden'));
+				$selected->appendChild($listItem);
+			}
+
 			$stage->appendChild($selected);
 
 			if($flagWithError != NULL) {
@@ -336,14 +337,31 @@
 
 			$status = self::__OK__;
 
-			if(!is_array($data)) return array('file' => General::sanitize($data));
+			if(!is_array($data)) {
+				$mimetype = $this->getMimetype(WORKSPACE . '/' . $data);
+				return array(
+					'file' => General::sanitize($data),
+					'meta' => serialize($this->getMetaInfo(WORKSPACE . '/' . $data, $mimetype)),
+					'mimetype' => $mimetype,
+					'size' => (file_exists(WORKSPACE . '/' . $data) && is_readable(WORKSPACE . '/' . $data) ? filesize(WORKSPACE . '/' . $data) : 'unknown')
+				);
+			}
 
 			if(empty($data)) return NULL;
 
-			$result = array('file' => array());
+			$result = array(
+				'file' => array(),
+				'meta' => array(),
+				'mimetype' => array(),
+				'size' => array()
+			);
 
 			foreach($data as $file) {
-				$result['file'][] = $file;
+				$mimetype = $this->getMimetype(WORKSPACE . '/' . $file);
+				$result['file'][] = General::sanitize($file);
+				$result['meta'][] = serialize($this->getMetaInfo(WORKSPACE . '/' . $file, $mimetype));
+				$result['mimetype'][] = $mimetype;
+				$result['size'][] = (file_exists(WORKSPACE . '/' . $file) && is_readable(WORKSPACE . '/' . $file) ? filesize(WORKSPACE . '/' . $file) : 'unknown');
 			}
 
 			return $result;
@@ -367,6 +385,111 @@
 				) ENGINE=MyISAM;"
 
 			);
+		}
+
+		public static function getMetaInfo($file, $type){
+
+			$imageMimeTypes = array(
+				'image/gif',
+				'image/jpg',
+				'image/jpeg',
+				'image/pjpeg',
+				'image/png',
+			);
+			
+			$meta = array();
+			
+			$meta['creation'] = DateTimeObj::get('c', filemtime($file));
+			
+			if(General::in_iarray($type, $imageMimeTypes) && $array = @getimagesize($file)){
+				$meta['width']    = $array[0];
+				$meta['height']   = $array[1];
+			}
+			
+			return $meta;
+			
+		}
+
+		public static function getFileExtension($file){
+			$parts = explode('.', basename($file));
+			return array_pop($parts);
+		}
+
+		public function getMimetype($file) {
+			
+			if (!(function_exists('finfo_open') && is_readable($file) && $finfo = new finfo(FILEINFO_MIME))) {
+				$ct['htm'] = 'text/html';
+				$ct['html'] = 'text/html';
+				$ct['txt'] = 'text/plain';
+				$ct['asc'] = 'text/plain';
+				$ct['bmp'] = 'image/bmp';
+				$ct['gif'] = 'image/gif';
+				$ct['jpeg'] = 'image/jpeg';
+				$ct['jpg'] = 'image/jpeg';
+				$ct['jpe'] = 'image/jpeg';
+				$ct['png'] = 'image/png';
+				$ct['ico'] = 'image/vnd.microsoft.icon';
+				$ct['mpeg'] = 'video/mpeg';
+				$ct['mpg'] = 'video/mpeg';
+				$ct['mpe'] = 'video/mpeg';
+				$ct['qt'] = 'video/quicktime';
+				$ct['mov'] = 'video/quicktime';
+				$ct['avi']  = 'video/x-msvideo';
+				$ct['wmv'] = 'video/x-ms-wmv';
+				$ct['mp2'] = 'audio/mpeg';
+				$ct['mp3'] = 'audio/mpeg';
+				$ct['rm'] = 'audio/x-pn-realaudio';
+				$ct['ram'] = 'audio/x-pn-realaudio';
+				$ct['rpm'] = 'audio/x-pn-realaudio-plugin';
+				$ct['ra'] = 'audio/x-realaudio';
+				$ct['wav'] = 'audio/x-wav';
+				$ct['css'] = 'text/css';
+				$ct['zip'] = 'application/zip';
+				$ct['pdf'] = 'application/pdf';
+				$ct['doc'] = 'application/msword';
+				$ct['bin'] = 'application/octet-stream';
+				$ct['exe'] = 'application/octet-stream';
+				$ct['class']= 'application/octet-stream';
+				$ct['dll'] = 'application/octet-stream';
+				$ct['xls'] = 'application/vnd.ms-excel';
+				$ct['ppt'] = 'application/vnd.ms-powerpoint';
+				$ct['wbxml']= 'application/vnd.wap.wbxml';
+				$ct['wmlc'] = 'application/vnd.wap.wmlc';
+				$ct['wmlsc']= 'application/vnd.wap.wmlscriptc';
+				$ct['dvi'] = 'application/x-dvi';
+				$ct['spl'] = 'application/x-futuresplash';
+				$ct['gtar'] = 'application/x-gtar';
+				$ct['gzip'] = 'application/x-gzip';
+				$ct['js'] = 'application/x-javascript';
+				$ct['swf'] = 'application/x-shockwave-flash';
+				$ct['tar'] = 'application/x-tar';
+				$ct['xhtml']= 'application/xhtml+xml';
+				$ct['au'] = 'audio/basic';
+				$ct['snd'] = 'audio/basic';
+				$ct['midi'] = 'audio/midi';
+				$ct['mid'] = 'audio/midi';
+				$ct['m3u'] = 'audio/x-mpegurl';
+				$ct['tiff'] = 'image/tiff';
+				$ct['tif'] = 'image/tiff';
+				$ct['rtf'] = 'text/rtf';
+				$ct['wml'] = 'text/vnd.wap.wml';
+				$ct['wmls'] = 'text/vnd.wap.wmlscript';
+				$ct['xsl'] = 'text/xml';
+				$ct['xml'] = 'text/xml';
+
+				$extension = $this->getFileExtension($file);
+				if (!$type = $ct[strtolower($extension)]) {
+					$type = 'unknown';
+				}
+			} else {
+				$type = $finfo->file($file);
+				// remove charset (added as of PHP 5.3)
+				if (false !== $pos = strpos($type, ';')) {
+					$type = substr($type, 0, $pos);
+				}
+			}
+			
+			return $type;
 		}
 
 	}
