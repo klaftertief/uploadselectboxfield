@@ -8,6 +8,7 @@
 				$storage = $label.find('select'),
 				$directories = $storage.find('optgroup'),
 				$stage = $field.find('.stage'),
+				$drawer = $stage.data('templates.stage').templates.filter('.drawer').removeClass('template'),
 				$selection = $stage.find('.selection'),
 				$directory = $('<select name="' + $label.attr('data-fieldname') + '[directory]"></select>'),
 				$filter = $stage.find('.browser > input[type="text"]'),
@@ -38,6 +39,10 @@
 			
 			$stage.bind('constructstop destructstop update', function(event, item) {
 				sync(item);
+			});
+			
+			$stage.bind('constructstop', function(event, item) {
+				create(item);
 			});
 			
 			$directory.bind('change', function(event) {
@@ -71,7 +76,7 @@
 								// TODO create function
 								html += '<li class="preview" data-value="' + path + '">' + image + '<span class="file image"><em>' + directory + '/</em><br />' + val + '</span><input type="hidden" disabled="disabled" value="' + path + '" name="fields[files][]"/></li>';
 							});
-							console.log(html);
+							// console.log(html);
 							$list.html(html);
 							
 							count(data.length);
@@ -125,6 +130,34 @@
 				}
 			};
 			
+			// Create item
+			function create(item) {
+				var $editor = $drawer.clone().addClass('new').insertAfter(item),
+					$uploader = $editor.find('.uploader');
+				
+					$uploader.pluploadQueue({
+						// General settings
+						runtimes : 'html5',
+						url : Symphony.Context.get('root') + '/symphony/extension/uploadselectboxfield/upload/',
+						max_file_size : '10mb',
+						chunk_size : '1mb',
+						unique_names : true,
+						filters : [
+							{title : "Image files", extensions : "jpg,gif,png"},
+							{title : "Zip files", extensions : "zip"}
+						],
+						init: {
+							FileUploaded: function(up, file, info) {
+								// Called when a file has finished uploading
+								// console.log(file.name);
+								$selection.prepend('<li class="preview"><img width="40" height="40" src="' + Symphony.Context.get('root') + '/image/2/40/40/5/media/images/test/' + file.name + '"/><span class="file image"><em>/media/images/test/</em><br />' + file.name + '</span><input type="hidden" disabled="disabled" value="" name="fields[files][]"/></li>');
+							}
+						}
+					});
+				
+				
+				// $editor.insertAfter(item).slideDown('fast');
+			};
 		});
 
 	});

@@ -25,3 +25,10 @@
 .field-uploadselectbox .stage .preview em {
 	float: none;
 }
+
+.uploader {
+	background-color: #333;
+}
+.plupload_container {
+	padding: 0;
+}

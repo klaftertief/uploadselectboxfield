@@ -147,9 +147,12 @@
 		}
 
 		function displayPublishPanel(&$wrapper, $data=NULL, $flagWithError=NULL, $fieldnamePrefix=NULL, $fieldnamePostfix=NULL){
+			Administration::instance()->Page->addScriptToHead(URL . '/extensions/uploadselectboxfield/lib/plupload/js/plupload.full.min.js', 99, false);
+			Administration::instance()->Page->addScriptToHead(URL . '/extensions/uploadselectboxfield/lib/plupload/js/jquery.plupload.queue.min.js', 100, false);
 			Administration::instance()->Page->addScriptToHead(URL . '/extensions/uploadselectboxfield/lib/stage/stage.publish.js', 101, false);
 			Administration::instance()->Page->addScriptToHead(URL . '/extensions/uploadselectboxfield/assets/uploadselectboxfield.publish.js', 102, false);
 
+			Administration::instance()->Page->addStylesheetToHead(URL . '/extensions/uploadselectboxfield/lib/plupload/examples/css/plupload.queue.css', 'screen', 103, false);
 			Administration::instance()->Page->addStylesheetToHead(URL . '/extensions/uploadselectboxfield/lib/stage/stage.publish.css', 'screen', 103, false);
 			Administration::instance()->Page->addStylesheetToHead(URL . '/extensions/uploadselectboxfield/assets/uploadselectboxfield.publish.css', 'screen', 104, false);
 
@@ -223,6 +226,16 @@
 				$selected->appendChild($listItem);
 			}
 			
+			// item template
+			$thumb = '<img src="' . URL . '/extensions/uploadselectboxfield/assets/images/new.gif" width="40" height="40" class="thumb" />';
+			$item = new XMLElement('li', $thumb . '<span class="image file">' . __('New item') . '<br /><em>' . __('Please fill out the form below.') . '</em></span><a class="destructor">&#215;</a>', array('class' => 'template create preview'));
+			$selected->appendChild($item);
+			
+			// drawer template
+			$drawer = new XMLElement('li', NULL, array('class' => 'template drawer'));
+			$drawer->appendChild(new XMLElement('div', NULL, array('class' => 'uploader')));
+			$selected->appendChild($drawer);
+
 			$stage->appendChild($selected);
 
 			if($flagWithError != NULL) {
