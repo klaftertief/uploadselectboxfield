@@ -174,7 +174,7 @@
 			foreach($states['filelist'] as $handle => $v){
 				$directoryOptions[] = array($destination . '/' . General::sanitize($v), in_array($destination . '/' . General::sanitize($v), $data['file']), $v);
 			}
-			$options[] = array('label' => $destination, 'options' => $directoryOptions);
+			$options[] = array('label' => $destination . '/', 'options' => $directoryOptions);
 
 			// TODO recursive method
 			if ($this->get('allow_subdirectories') == 'yes' && is_array($states['dirlist']) && !empty($states['dirlist'])) {
@@ -185,7 +185,7 @@
 						foreach($states[$destination . '/' . $directory . '/']['filelist'] as $handle => $v){
 							$directoryOptions[] = array($destination . '/' . $directory . '/' . General::sanitize($v), in_array($destination . '/' . $directory . '/' . General::sanitize($v), $data['file']), $v);
 						}
-						$options[] = array('label' => $destination . '/' . $directory, 'options' => $directoryOptions);
+						$options[] = array('label' => $destination . '/' . $directory . '/', 'options' => $directoryOptions);
 					}
 				}
 			}
@@ -218,7 +218,7 @@
 					$listItem->setAttribute('class', 'preview');
 					$inner->setAttribute('class', 'image file');
 				}
-				$inner->appendChild(new XMLElement('em', dirname($file)));
+				$inner->appendChild(new XMLElement('em', dirname($file) . '/'));
 				$inner->appendChild(new XMLElement('br'));
 				$inner->setValue(basename($file), false);
 				$listItem->appendChild($inner);
@@ -227,14 +227,14 @@
 			}
 			
 			// item template
-			$thumb = '<img src="' . URL . '/extensions/uploadselectboxfield/assets/images/new.gif" width="40" height="40" class="thumb" />';
-			$item = new XMLElement('li', $thumb . '<span class="image file">' . __('New item') . '<br /><em>' . __('Please fill out the form below.') . '</em></span><a class="destructor">&#215;</a>', array('class' => 'template create preview'));
-			$selected->appendChild($item);
+			// $thumb = '<img src="' . URL . '/extensions/uploadselectboxfield/assets/images/new.gif" width="40" height="40" class="thumb" />';
+			// $item = new XMLElement('li', $thumb . '<span class="image file">' . __('New item') . '<br /><em>' . __('Please fill out the form below.') . '</em></span><a class="destructor">&#215;</a>', array('class' => 'template create preview'));
+			// $selected->appendChild($item);
 			
 			// drawer template
-			$drawer = new XMLElement('li', NULL, array('class' => 'template drawer'));
-			$drawer->appendChild(new XMLElement('div', NULL, array('class' => 'uploader')));
-			$selected->appendChild($drawer);
+			// $drawer = new XMLElement('li', NULL, array('class' => 'template drawer'));
+			// $drawer->appendChild(new XMLElement('div', NULL, array('class' => 'uploader')));
+			// $selected->appendChild($drawer);
 
 			$stage->appendChild($selected);
 
@@ -400,7 +400,7 @@
 				  `mimetype` varchar(50) default NULL,
 				  `meta` varchar(255) default NULL,
 				  PRIMARY KEY  (`id`),
-				  UNIQUE KEY `entry_id` (`entry_id`),
+				  KEY `entry_id` (`entry_id`),
 				  KEY `file` (`file`),
 				  KEY `mimetype` (`mimetype`)
 				) ENGINE=MyISAM;"

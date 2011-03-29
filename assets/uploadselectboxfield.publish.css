@@ -32,3 +32,18 @@
 .plupload_container {
 	padding: 0;
 }
+.stage ul li .uploader span {
+	color: #3F3D35;
+	display: inline;
+	margin: 0px;
+	padding: 0;
+	text-decoration: none;
+	background-image: none;
+	cursor: auto;
+}
+.stage ul li .uploader span:hover {
+	background-image: none;
+}
+.stage ul li .uploader .plupload_upload_status {
+	display: none;
+}

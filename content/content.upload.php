@@ -11,22 +11,7 @@
 
 		public function view(){
 			$directory = WORKSPACE . $_GET['destination'];
-			$filter = '/' . $_GET['filter'] . '/';
 
-			$states = General::listStructure($directory, $filter, false, 'asc', $directory);
-
-			$this->_Result = json_encode($states['filelist']);
-		}
-
-		public function generate(){
-			// HTTP headers for no cache etc
-			header("Expires: Mon, 26 Jul 1997 05:00:00 GMT");
-			header("Last-Modified: " . gmdate("D, d M Y H:i:s") . " GMT");
-			header("Cache-Control: no-store, no-cache, must-revalidate");
-			header("Cache-Control: post-check=0, pre-check=0", false);
-			header("Pragma: no-cache");
-			header('Content-Type: application/json');
-			
 			// Settings
 			$targetDir = TMP . DIRECTORY_SEPARATOR . "plupload";
 			$maxFileAge = 60 * 10; // Temp file age in seconds
@@ -60,7 +45,7 @@
 
 				closedir($dir);
 			} else
-				die('{"jsonrpc" : "2.0", "error" : {"code": 100, "message": "Failed to open temp directory."}, "id" : "id"}');
+				$this->_Result = '{"jsonrpc" : "2.0", "error" : {"code": 100, "message": "Failed to open temp directory."}, "id" : "id"}';
 
 			// Look for the content type header
 			if (isset($_SERVER["HTTP_CONTENT_TYPE"]))
@@ -82,13 +67,13 @@
 								fwrite($out, $buff);
 							}
 						} else
-							die('{"jsonrpc" : "2.0", "error" : {"code": 101, "message": "Failed to open input stream."}, "id" : "id"}');
+							$this->_Result = '{"jsonrpc" : "2.0", "error" : {"code": 101, "message": "Failed to open input stream."}, "id" : "id"}';
 
 						fclose($out);
 					} else
-						die('{"jsonrpc" : "2.0", "error" : {"code": 102, "message": "Failed to open output stream."}, "id" : "id"}');
+						$this->_Result = '{"jsonrpc" : "2.0", "error" : {"code": 102, "message": "Failed to open output stream."}, "id" : "id"}';
 				} else
-					die('{"jsonrpc" : "2.0", "error" : {"code": 103, "message": "Failed to move uploaded file."}, "id" : "id"}');
+					$this->_Result = '{"jsonrpc" : "2.0", "error" : {"code": 103, "message": "Failed to move uploaded file."}, "id" : "id"}';
 			} else {
 				// Open temp file
 				$out = fopen($targetDir . DIRECTORY_SEPARATOR . $fileName, $chunk == 0 ? "wb" : "ab");
@@ -100,22 +85,32 @@
 						while ($buff = fread($in, 4096))
 							fwrite($out, $buff);
 					} else
-						die('{"jsonrpc" : "2.0", "error" : {"code": 101, "message": "Failed to open input stream."}, "id" : "id"}');
+						$this->_Result = '{"jsonrpc" : "2.0", "error" : {"code": 101, "message": "Failed to open input stream."}, "id" : "id"}';
 
 					fclose($out);
 				} else
-					die('{"jsonrpc" : "2.0", "error" : {"code": 102, "message": "Failed to open output stream."}, "id" : "id"}');
+					$this->_Result = '{"jsonrpc" : "2.0", "error" : {"code": 102, "message": "Failed to open output stream."}, "id" : "id"}';
 			}
 
 			// move file to target directory
 			// TODO make target directory configurable
-			rename($targetDir . DIRECTORY_SEPARATOR . $fileName, WORKSPACE . "/media/images/test/" . $_FILES['file']['name']);
+			rename($targetDir . DIRECTORY_SEPARATOR . $fileName, $directory . DIRECTORY_SEPARATOR . $_FILES['file']['name']);
 			
 			// Return JSON-RPC response
-			die('{"jsonrpc" : "2.0", "result" : null, "id" : "id","filename":"'.$fileName.'"}');
+			$this->_Result = '{"jsonrpc" : "2.0", "result" : null, "id" : "id","filename":"'.$fileName.'"}';
+		}
 
-			// echo $this->_Result;
-			// exit;
+		public function generate(){
+			// HTTP headers for no cache etc
+			header('Content-Type: application/json');
+			header("Expires: Mon, 26 Jul 1997 05:00:00 GMT");
+			header("Last-Modified: " . gmdate("D, d M Y H:i:s") . " GMT");
+			header("Cache-Control: no-store, no-cache, must-revalidate");
+			header("Cache-Control: post-check=0, pre-check=0", false);
+			header("Pragma: no-cache");
+			
+			echo $this->_Result;
+			exit;
 		}
 	}
 

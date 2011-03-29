@@ -2,22 +2,29 @@
 
 	$(document).ready(function() {
 
+		Symphony.Language.add({
+			'No file found.': false,
+			'Start typing to search for files. Use <code>.</code> as whildcard.': false
+		});
+
 		$('.field-uploadselectbox').each(function() {
 			var $field = $(this),
 				$label = $field.find('label:first'),
 				$storage = $label.find('select'),
 				$directories = $storage.find('optgroup'),
 				$stage = $field.find('.stage'),
-				$drawer = $stage.data('templates.stage').templates.filter('.drawer').removeClass('template'),
 				$selection = $stage.find('.selection'),
-				$directory = $('<select name="' + $label.attr('data-fieldname') + '[directory]"></select>'),
+				$uploader = $('<div class="uploader"></div>').insertAfter($selection),
+				$directory = $('<select></select>'),
 				$filter = $stage.find('.browser > input[type="text"]'),
 				$counter = $stage.find('.counter'),
-				$queue = $stage.find('.queue');
+				$queue = $stage.find('.queue'),
+				emptyMessage = '<li class="empty message"><span>' + Symphony.Language.get('Start typing to search for files. Use <code>.</code> as whildcard.') + '</span></li>';
 			
-			$storage.attr('disabled', 'disabled');
+			// some initial stuff
+			$storage.attr('disabled', 'disabled').hide();
 			
-			$queue.find('ul').html('<li class="empty message"><span>Start typing to search for files. Use <code>.</code> as whildcard.</span></li>'); // TODO translate
+			$queue.find('ul').html(emptyMessage);
 			
 			$directories.each(function() {
 				var label = $(this).attr('label');
@@ -29,31 +36,47 @@
 				$('<div class="directory"></div>').html($directory).prependTo($queue);
 			}
 			
-			$stage.bind('browsestart', function(event) {
-				// browse();
+			$stage.bind('searchstart', function(event, strings) {
+				search();
 			});
 			
-			$stage.bind('searchstart', function(event, strings) {
-				browse();
+			$directory.bind('change', function(event) {
+				search();
 			});
 			
 			$stage.bind('constructstop destructstop update', function(event, item) {
 				sync(item);
 			});
 			
-			$stage.bind('constructstop', function(event, item) {
-				create(item);
+			$stage.bind('constructstart', function(event, item) {
+				if(!item) {
+					create();
+				}
 			});
 			
-			$directory.bind('change', function(event) {
-				browse();
+			$selection.delegate('li .file em', 'click', function(event) {
+				var directory = $(this).text();
+					// file = $(this).find('a').text();
+				
+				$directory.val(directory);
+				 $filter.val('.');
+				// $(event.target).is('a') ? $filter.val(file) : $filter.val('.');
+				
+				$stage.trigger('searchstart');
+				$queue.find('ul').show();
 			});
 			
-			function browse(){
-				// var $list = $queue.find('ul').addClass('loading').hide().html(''),
+			$('body').bind('click.uploadselectbox', function() {
+				$stage.find('.uploader').html('');
+			});
+			
+			// and now the heavy methods
+			function search(){
 				var $list = $queue.find('ul').addClass('loading'),
 					directory = $directory.val(),
 					html = '';
+				
+				$list.html(emptyMessage);
 				
 				$.ajax({
 					url: Symphony.Context.get('root') + '/symphony/extension/uploadselectboxfield/getfilelist/',
@@ -64,19 +87,17 @@
 						filter: $filter.val()
 					},
 					complete: function(xhr, textStatus) {
-						//called when complete
 					},
 					success: function(data, textStatus, xhr) {
 						if (!data) {
-							$list.html('<li class="empty message"><span>No file found.</li>'); // TODO translate
+							$list.html('<li class="empty message"><span>' + Symphony.Language.get('No file found.') + '</span></li>');
 						} else {
 							$.each(data, function(index, val) {
-								var path = directory + '/' + val,
+								var path = directory + val,
 									image = val.match(/\.(?:bmp|gif|jpe?g|png)$/i) ? '<img width="40" height="40" src="' + Symphony.Context.get('root') + '/image/2/40/40/5' + path + '"/>' : '';
 								// TODO create function
-								html += '<li class="preview" data-value="' + path + '">' + image + '<span class="file image"><em>' + directory + '/</em><br />' + val + '</span><input type="hidden" disabled="disabled" value="' + path + '" name="fields[files][]"/></li>';
+								html += '<li class="preview" data-value="' + path + '">' + image + '<span class="file image"><em>' + directory + '</em><br />' + val + '</span><input type="hidden" disabled="disabled" value="' + path + '" name="fields[files][]"/></li>';
 							});
-							// console.log(html);
 							$list.html(html);
 							
 							count(data.length);
@@ -84,22 +105,15 @@
 							$stage.trigger('update');
 						};
 						
-						// $list.slideDown('fast').removeClass('loading');
 						$list.removeClass('loading');
 					},
 					error: function(xhr, textStatus, errorThrown) {
-						//called when there is an error
 					}
 				});
 			}
 			
 			function sync(item){
-				$selection.find('input').each(function(index, item) {
-					var $input = $(item);
-					
-					$input.attr('disabled', false);
-					$queue.find('input[value="' + $input.val() + '"]').parent().addClass('selected');
-				});
+				$(item).find('input').attr('disabled', false);
 			}
 			
 			function count(size) {
@@ -130,33 +144,30 @@
 				}
 			};
 			
-			// Create item
 			function create(item) {
-				var $editor = $drawer.clone().addClass('new').insertAfter(item),
-					$uploader = $editor.find('.uploader');
+				var directory = $directory.val();
 				
-					$uploader.pluploadQueue({
-						// General settings
-						runtimes : 'html5',
-						url : Symphony.Context.get('root') + '/symphony/extension/uploadselectboxfield/upload/',
-						max_file_size : '10mb',
-						chunk_size : '1mb',
-						unique_names : true,
-						filters : [
-							{title : "Image files", extensions : "jpg,gif,png"},
-							{title : "Zip files", extensions : "zip"}
-						],
-						init: {
-							FileUploaded: function(up, file, info) {
-								// Called when a file has finished uploading
-								// console.log(file.name);
-								$selection.prepend('<li class="preview"><img width="40" height="40" src="' + Symphony.Context.get('root') + '/image/2/40/40/5/media/images/test/' + file.name + '"/><span class="file image"><em>/media/images/test/</em><br />' + file.name + '</span><input type="hidden" disabled="disabled" value="" name="fields[files][]"/></li>');
-							}
+				$uploader.pluploadQueue({
+					runtimes : 'html5',
+					url : Symphony.Context.get('root') + '/symphony/extension/uploadselectboxfield/upload/?destination=' + directory,
+					max_file_size : '10mb',
+					chunk_size : '1mb',
+					unique_names : true,
+					filters : [
+						// {title : "Image files", extensions : "jpg,gif,png"},
+						// {title : "Zip files", extensions : "zip"}
+					],
+					preinit : {
+						UploadFile: function(up, file) {
+							up.settings.url = Symphony.Context.get('root') + '/symphony/extension/uploadselectboxfield/upload/?destination=' + $directory.val();
 						}
-					});
-				
-				
-				// $editor.insertAfter(item).slideDown('fast');
+					},
+					init: {
+						FileUploaded: function(up, file, info) {
+							$selection.append('<li data-value="' +  directory + file.name + '" class="preview"><img width="40" height="40" src="' + Symphony.Context.get('root') + '/image/2/40/40/5' +  directory + file.name + '"/><span class="file image"><em>' +  directory + '</em><br />' + file.name + '</span><input type="hidden" value="' +  directory + file.name + '" name="fields[files][]"/><a class="destructor">&#215;</a></li>');
+						}
+					}
+				});
 			};
 		});
 
