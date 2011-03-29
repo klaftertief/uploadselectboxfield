@@ -16,6 +16,7 @@
 				$selection = $stage.find('.selection'),
 				$uploader = $('<div class="uploader"></div>').insertAfter($selection),
 				$directory = $('<select></select>'),
+				directory = $directories.find('optgroup:first').attr('label'),
 				$filter = $stage.find('.browser > input[type="text"]'),
 				$counter = $stage.find('.counter'),
 				$queue = $stage.find('.queue'),
@@ -33,14 +34,15 @@
 			});
 			
 			if($stage.is('.subdirectories')) {
-				$('<div class="directory"></div>').html($directory).prependTo($queue);
+				// $('<div class="directory"></div>').html($directory)[$stage.is('.searchable') ? 'prependTo' : 'appendTo']($queue);
+				if ($stage.is('.searchable')) {
+					$('<div class="directory"></div>').html($directory).prependTo($queue);
+				} else {
+					$('<div class="directory"></div>').html($directory).insertBefore($queue.find('ul'));
+				};
 			}
 			
 			$stage.bind('searchstart', function(event, strings) {
-				search();
-			});
-			
-			$directory.bind('change', function(event) {
 				search();
 			});
 			
@@ -54,17 +56,23 @@
 				}
 			});
 			
-			$selection.delegate('li .file em', 'click', function(event) {
-				var directory = $(this).text();
-					// file = $(this).find('a').text();
-				
-				$directory.val(directory);
-				 $filter.val('.');
-				// $(event.target).is('a') ? $filter.val(file) : $filter.val('.');
-				
-				$stage.trigger('searchstart');
-				$queue.find('ul').show();
-			});
+			if ($stage.is('.searchable')) {
+				$directory.bind('change', function(event) {
+					search();
+				});
+
+				$selection.delegate('li .file em', 'click', function(event) {
+					var directory = $(this).text();
+						// file = $(this).find('a').text();
+
+					$directory.val(directory);
+					 $filter.val('.');
+					// $(event.target).is('a') ? $filter.val(file) : $filter.val('.');
+
+					$stage.trigger('searchstart');
+					$queue.find('ul').show();
+				});
+			}
 			
 			$('body').bind('click.uploadselectbox', function() {
 				$stage.find('.uploader').html('');
@@ -73,9 +81,9 @@
 			// and now the heavy methods
 			function search(){
 				var $list = $queue.find('ul').addClass('loading'),
-					directory = $directory.val(),
 					html = '';
 				
+				directory = $directory.val() || directory;
 				$list.html(emptyMessage);
 				
 				$.ajax({
@@ -83,7 +91,7 @@
 					type: 'GET',
 					dataType: 'json',
 					data: {
-						destination: $directory.val(),
+						destination: directory,
 						filter: $filter.val()
 					},
 					complete: function(xhr, textStatus) {
@@ -145,7 +153,7 @@
 			};
 			
 			function create(item) {
-				var directory = $directory.val();
+				directory = $directory.val() || directory;
 				
 				$uploader.pluploadQueue({
 					runtimes : 'html5',
@@ -159,7 +167,7 @@
 					],
 					preinit : {
 						UploadFile: function(up, file) {
-							up.settings.url = Symphony.Context.get('root') + '/symphony/extension/uploadselectboxfield/upload/?destination=' + $directory.val();
+							up.settings.url = Symphony.Context.get('root') + '/symphony/extension/uploadselectboxfield/upload/?destination=' + ($directory.val() || directory);
 						}
 					},
 					init: {

@@ -66,8 +66,8 @@
 
 			foreach($data['file'] as $index => $file) {
 				$item->appendChild(new XMLElement(
-					'item', General::sanitize($file), array(
-						'size' => General::formatFilesize(filesize($path . '/' . $file)),
+					'item', General::sanitize(basename($file)), array(
+						'size' => General::formatFilesize(filesize(WORKSPACE . '/' . $file)),
 					)
 				));
 			}
@@ -112,8 +112,8 @@
 			$input = Widget::Input('fields['.$this->get('sortorder').'][allow_subdirectories]', 'yes', 'checkbox');
 			if($this->get('allow_subdirectories') == 'yes') $input->setAttribute('checked', 'checked');
 			$label->setValue(__('%s Allow subdirectories', array($input->generate())));
-			$label->appendChild(new XMLElement('i', __('This will add a dropdown to select subdirectories')));
 			$wrapper->appendChild($label);
+			$wrapper->appendChild(new XMLElement('p', __('This will add a dropdown to select subdirectories'), array('class' => 'help')));
 
 			$this->buildValidationSelect($wrapper, $this->get('validator'), 'fields['.$this->get('sortorder').'][validator]', 'upload');
 
@@ -186,6 +186,8 @@
 							$directoryOptions[] = array($destination . '/' . $directory . '/' . General::sanitize($v), in_array($destination . '/' . $directory . '/' . General::sanitize($v), $data['file']), $v);
 						}
 						$options[] = array('label' => $destination . '/' . $directory . '/', 'options' => $directoryOptions);
+					} else {
+						$options[] = array('label' => $destination . '/' . $directory . '/', 'options' => array());
 					}
 				}
 			}

@@ -1,7 +1,13 @@
 .field-uploadselectbox .directory {
 	margin: 0 12px 7px 12px;
+	width: auto;
 }
-
+	.field-uploadselectbox .directory select {
+		width: auto;
+	}
+	.field-uploadselectbox .searchable .directory select {
+		width: 100%;
+	}
 .field-uploadselectbox .stage .preview img {
 	position: absolute;
 	border: 1px solid #CCC;
