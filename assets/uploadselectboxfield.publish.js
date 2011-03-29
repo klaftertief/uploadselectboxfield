@@ -156,11 +156,12 @@
 				directory = $directory.val() || directory;
 				
 				$uploader.pluploadQueue({
-					runtimes : 'html5',
+					runtimes : 'html5,flash',
 					url : Symphony.Context.get('root') + '/symphony/extension/uploadselectboxfield/upload/?destination=' + directory,
 					max_file_size : '10mb',
 					chunk_size : '1mb',
 					unique_names : true,
+					flash_swf_url : Symphony.Context.get('root') + '/extensions/uploadselectboxfield/lib/plupload/js/plupload.flash.swf',
 					filters : [
 						// {title : "Image files", extensions : "jpg,gif,png"},
 						// {title : "Zip files", extensions : "zip"}

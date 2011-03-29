@@ -93,8 +93,9 @@
 			}
 
 			// move file to target directory
-			// TODO make target directory configurable
-			rename($targetDir . DIRECTORY_SEPARATOR . $fileName, $directory . DIRECTORY_SEPARATOR . $_FILES['file']['name']);
+			if($chunk == ($chunks-1)){
+				rename($targetDir . DIRECTORY_SEPARATOR . $fileName, $directory . DIRECTORY_SEPARATOR . $_FILES['file']['name']);
+			}
 			
 			// Return JSON-RPC response
 			$this->_Result = '{"jsonrpc" : "2.0", "result" : null, "id" : "id","filename":"'.$fileName.'"}';
