@@ -211,21 +211,23 @@
 			$selected->appendChild($empty);
 			
 			foreach ($data['file'] as $file) {
-				$listItem = new XMLElement('li', NULL, array('data-value' => $file));
-				$inner = new XMLElement('span');
-				if (General::validateString($file, '/\.(?:bmp|gif|jpe?g|png)$/i')) {
-					$image = new XMLElement('img');
-					$image->setAttribute('src', URL . '/image/2/40/40/5' . $file);
-					$listItem->appendChild($image);
-					$listItem->setAttribute('class', 'preview');
-					$inner->setAttribute('class', 'image file');
+				if (!is_null($file)) {
+					$listItem = new XMLElement('li', NULL, array('data-value' => $file));
+					$inner = new XMLElement('span');
+					if (General::validateString($file, '/\.(?:bmp|gif|jpe?g|png)$/i')) { // TODO improve
+						$image = new XMLElement('img');
+						$image->setAttribute('src', URL . '/image/2/40/40/5' . $file);
+						$listItem->appendChild($image);
+						$listItem->setAttribute('class', 'preview');
+						$inner->setAttribute('class', 'image file');
+					}
+					$inner->appendChild(new XMLElement('em', dirname($file) . '/'));
+					$inner->appendChild(new XMLElement('br'));
+					$inner->setValue(basename($file), false);
+					$listItem->appendChild($inner);
+					$listItem->appendChild(Widget::Input($fieldname, $file, 'hidden'));
+					$selected->appendChild($listItem);
 				}
-				$inner->appendChild(new XMLElement('em', dirname($file) . '/'));
-				$inner->appendChild(new XMLElement('br'));
-				$inner->setValue(basename($file), false);
-				$listItem->appendChild($inner);
-				$listItem->appendChild(Widget::Input($fieldname, $file, 'hidden'));
-				$selected->appendChild($listItem);
 			}
 			
 			// item template
@@ -360,6 +362,8 @@
 
 			$status = self::__OK__;
 
+			if(empty($data)) return NULL;
+
 			if(!is_array($data)) {
 				$mimetype = $this->getMimetype(WORKSPACE . '/' . $data);
 				return array(
@@ -369,8 +373,6 @@
 					'size' => (file_exists(WORKSPACE . '/' . $data) && is_readable(WORKSPACE . '/' . $data) ? filesize(WORKSPACE . '/' . $data) : 'unknown')
 				);
 			}
-
-			if(empty($data)) return NULL;
 
 			$result = array(
 				'file' => array(),
